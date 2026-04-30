@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>soon...</title>
+
+  <!-- Favicon: точная копия логотипа VY со страницы -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100'%3E%3Ctext x='50%25' y='70' font-family='Brush Script MT, cursive' font-size='80' fill='%23e6f0ff' font-weight='bold' text-anchor='middle' style='letter-spacing:-5px;'%3EVY%3C/text%3E%3C/svg%3E">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      background: linear-gradient(270deg, #0a0f1c, #1a2a3a, #0a0f1c);
+      background-size: 600% 600%;
+      animation: gradientMove 20s ease-in-out infinite;
+      color: white;
+      overflow: hidden;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* LOGO - увеличен и по центру (идеально совпадает с favicon) */
+    .logo {
+      width: 500px;
+      max-width: 90vw;
+      height: auto;
+      margin-bottom: 40px;
+      animation: logoPulse 4s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+      0%,100% { opacity: 0.85; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+
+    @keyframes fadePulse {
+      0%,100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    .btn {
+      margin-top: 40px;
+      padding: 14px 32px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 16px;
+      letter-spacing: 1px;
+      border: 1.5px solid #4da3ff;
+      color: #4da3ff;
+      text-decoration: none;
+      border-radius: 30px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(77, 163, 255, 0.05);
+      backdrop-filter: blur(4px);
+      transition: all 0.3s ease;
+      animation: btnPulse 4s ease-in-out infinite;
+    }
+
+    .btn:hover {
+      background: rgba(77, 163, 255, 0.15);
+      transform: scale(1.02);
+    }
+
+    @keyframes btnPulse {
+      0%,100% { box-shadow: 0 0 5px rgba(77, 163, 255, 0.5); border-color: #4da3ff; }
+      50% { box-shadow: 0 0 20px rgba(77, 163, 255, 0.8); border-color: #7bb9ff; }
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(77, 163, 255, 0.3), transparent);
+      top: 0;
+      left: -100%;
+      animation: btnShine 5s linear infinite;
+    }
+
+    @keyframes btnShine {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      color: #888;
+      font-family: 'Space Grotesk', sans-serif;
+      z-index: 2;
+      animation: fadePulse 6s ease-in-out infinite;
+    }
+
+    /* SVG CHAOTIC LINES */
+    .bg-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .path {
+      fill: none;
+      stroke: #4da3ff;
+      stroke-width: 1.2;
+      opacity: 0.15;
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+      animation: draw 8s linear infinite, pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes draw {
+      0% { stroke-dashoffset: 400; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 0.05; }
+      50% { opacity: 0.3; }
+    }
+
+  </style>
+</head>
+<body>
+
+<svg class="bg-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+  <path class="path" d="M0,200 C200,300 300,100 500,200 S800,300 1000,200" />
+  <path class="path" d="M0,600 C200,500 400,700 600,600 S900,500 1000,600" style="animation-delay:2s" />
+  <path class="path" d="M0,400 C150,450 350,350 550,400 S850,450 1000,400" style="animation-delay:4s" />
+  <path class="path" d="M0,800 C250,750 450,850 700,800 S950,750 1000,800" style="animation-delay:1s" />
+</svg>
+
+<div class="container">
+  <!-- Логотип VY - увеличен и отцентрирован (тот же стиль что и favicon) -->
+  <svg class="logo" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+    <text x="50%" y="70" font-family="Brush Script MT, cursive" font-size="80" fill="#FFFFFF" font-weight="bold" text-anchor="middle" style="letter-spacing:-5px;">
+      VY
+    </text>
+  </svg>
+  
+  <a class="btn" href="https://t.me/ProtectTheFreeInternet" target="_blank">Перейти к проекту</a>
+</div>
+
+<footer>
+  © 2026 Revival Corp — Все права защищены
+</footer>
+
+</body>
+</html>
