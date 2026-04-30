@@ -456,6 +456,37 @@ if [[ -f $XUIDB ]]; then
         client_id2=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         client_id3=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         emoji_flag=$(LC_ALL=en_US.UTF-8 curl -s https://ipwho.is/ | jq -r '.flag.emoji')
+		
+		# Запрос параметров Telegram бота
+        echo ""
+        msg_inf "Do you want to enable Telegram Bot? (y/n): "
+        read -r tg_enable_choice
+        TG_BOT_ENABLE="false"
+        TG_BOT_TOKEN=""
+        TG_BOT_CHAT_ID=""
+        
+        if [[ "$tg_enable_choice" == "y" || "$tg_enable_choice" == "Y" ]]; then
+            TG_BOT_ENABLE="true"
+            echo ""
+            msg_inf "Enter Telegram Bot Token (from @BotFather): "
+            read -r TG_BOT_TOKEN
+            while [[ -z "$TG_BOT_TOKEN" ]]; do
+                msg_err "Token cannot be empty! Enter Telegram Bot Token: "
+                read -r TG_BOT_TOKEN
+            done
+            
+            echo ""
+            msg_inf "Enter Telegram Chat ID (from @userinfobot): "
+            read -r TG_BOT_CHAT_ID
+            while [[ -z "$TG_BOT_CHAT_ID" ]]; do
+                msg_err "Chat ID cannot be empty! Enter Telegram Chat ID: "
+                read -r TG_BOT_CHAT_ID
+            done
+            msg_ok "Telegram Bot will be enabled"
+        else
+            msg_inf "Telegram Bot will be disabled"
+        fi
+		
        	sqlite3 $XUIDB <<EOF
              INSERT INTO "settings" ("key", "value") VALUES ("subPort",  '${sub_port}');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subPath",  '/${sub_path}/');
@@ -474,32 +505,138 @@ if [[ -f $XUIDB ]]; then
              INSERT INTO "settings" ("key", "value") VALUES ("expireDiff",  '0');
              INSERT INTO "settings" ("key", "value") VALUES ("trafficDiff",  '0');
              INSERT INTO "settings" ("key", "value") VALUES ("remarkModel",  '-ieo');
-             INSERT INTO "settings" ("key", "value") VALUES ("tgBotEnable",  'false');
-             INSERT INTO "settings" ("key", "value") VALUES ("tgBotToken",  '');
+             INSERT INTO "settings" ("key", "value") VALUES ("tgBotEnable",  '${TG_BOT_ENABLE}');
+             INSERT INTO "settings" ("key", "value") VALUES ("tgBotToken",  '${TG_BOT_TOKEN}');
              INSERT INTO "settings" ("key", "value") VALUES ("tgBotProxy",  '');
              INSERT INTO "settings" ("key", "value") VALUES ("tgBotAPIServer",  '');
-	     INSERT INTO "settings" ("key", "value") VALUES ("tgBotChatId",  '');
+	     INSERT INTO "settings" ("key", "value") VALUES ("tgBotChatId",  '${TG_BOT_CHAT_ID}');
              INSERT INTO "settings" ("key", "value") VALUES ("tgRunTime",  '@daily');
 	     INSERT INTO "settings" ("key", "value") VALUES ("tgBotBackup",  'false');
              INSERT INTO "settings" ("key", "value") VALUES ("tgBotLoginNotify",  'true');
 	     INSERT INTO "settings" ("key", "value") VALUES ("tgCpu",  '80');
-             INSERT INTO "settings" ("key", "value") VALUES ("tgLang",  'en-US');
+             INSERT INTO "settings" ("key", "value") VALUES ("tgLang",  'ru-RU');
 	     INSERT INTO "settings" ("key", "value") VALUES ("timeLocation",  'Europe/Moscow');
              INSERT INTO "settings" ("key", "value") VALUES ("secretEnable",  'false');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subDomain",  '');
              INSERT INTO "settings" ("key", "value") VALUES ("subCertFile",  '');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subKeyFile",  '');
-             INSERT INTO "settings" ("key", "value") VALUES ("subUpdates",  '12');
+             INSERT INTO "settings" ("key", "value") VALUES ("subUpdates",  '1');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subEncrypt",  'true');
              INSERT INTO "settings" ("key", "value") VALUES ("subShowInfo",  'true');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subJsonFragment",  '');
              INSERT INTO "settings" ("key", "value") VALUES ("subJsonNoises",  '');
 	     INSERT INTO "settings" ("key", "value") VALUES ("subJsonMux",  '');
              INSERT INTO "settings" ("key", "value") VALUES ("subJsonRules",  '');
-	     INSERT INTO "settings" ("key", "value") VALUES ("datepicker",  'gregorian');
-             INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('1','1','first','0','0','0','0','0');
-	     INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('2','1','first_1','0','0','0','0','0');
-		   INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('3','1','firstX','0','0','0','0','0');
+		 INSERT INTO "settings" ("key", "value") VALUES ("datepicker",  'gregorian');
+			 INSERT INTO "settings" ("key", "value") VALUES ("subTitle",  'PFI sub');
+		 INSERT INTO "settings" ("key", "value") VALUES ("subAnnounce",  'Telegram Channel @ProtectTheFreeInternet');
+		     INSERT INTO "settings" ("key", "value") VALUES ("subEnableRouting",  'true');
+		 INSERT INTO "settings" ("key", "value") VALUES ("subRoutingRules",  'happ://routing/add/eyJSZW1vdGVETlNJcCI6IjEuMS4xLjEiLCJEb21lc3RpY0ROU0lwIjoiNzcuODguOC44IiwiR2xvYmFsUHJveHkiOnRydWUsIkdlb2lwVXJsIjoiaHR0cHM6XC9cL2dpdGh1Yi5jb21cL0xveWFsc29sZGllclwvdjJyYXktcnVsZXMtZGF0XC9yZWxlYXNlc1wvbGF0ZXN0XC9kb3dubG9hZFwvZ2VvaXAuZGF0IiwiRGlyZWN0U2l0ZXMiOlsiZ2Vvc2l0ZTpjYXRlZ29yeS1ydSJdLCJCbG9ja0lwIjpbXSwiQmxvY2tTaXRlcyI6W10sIkRpcmVjdElwIjpbIjEwLjAuMC4wXC84IiwiMTAwLjY0LjAuMFwvMTAiLCIxNzIuMTYuMC4wXC8xMiIsIjE5Mi4xNjguMC4wXC8xNiIsIjE2OS4yNTQuMC4wXC8xNiIsIjIyNC4wLjAuMFwvNCIsIjI1NS4yNTUuMjU1LjI1NSIsImdlb2lwOnJ1Il0sIkZha2VEbnMiOmZhbHNlLCJEbnNIb3N0cyI6e30sIlByb3h5SXAiOltdLCJEb21lc3RpY0ROU1R5cGUiOiJEb0giLCJSb3V0ZU9yZGVyIjoiYmxvY2stZGlyZWN0LXByb3h5IiwiR2Vvc2l0ZVVybCI6Imh0dHBzOlwvXC9naXRodWIuY29tXC9Mb3lhbHNvbGRpZXJcL3YycmF5LXJ1bGVzLWRhdFwvcmVsZWFzZXNcL2xhdGVzdFwvZG93bmxvYWRcL2dlb3NpdGUuZGF0IiwiUHJveHlTaXRlcyI6W10sIkRvbWVzdGljRE5TRG9tYWluIjoiaHR0cHM6XC9cLzc3Ljg4LjguOFwvZG5zLXF1ZXJ5IiwiTmFtZSI6InJ1LWRpcmVjdCIsIkRvbWFpblN0cmF0ZWd5IjoiSVBJZk5vbk1hdGNoIiwiVXNlQ2h1bmtGaWxlcyI6dHJ1ZSwiUmVtb3RlRE5TRG9tYWluIjoiaHR0cHM6XC9cL2Nsb3VkZmxhcmUtZG5zLmNvbVwvZG5zLXF1ZXJ5IiwiTGFzdFVwZGF0ZWQiOjE3NzczODU2ODIsIlJlbW90ZUROU1R5cGUiOiJEb0gifQ==');
+			 INSERT INTO "settings" ("key", "value") VALUES ("xrayTemplateConfig",  '{
+  "log": {
+    "access": "./access.log",
+    "dnsLog": false,
+    "error": "",
+    "loglevel": "warning",
+    "maskAddress": ""
+  },
+  "api": {
+    "tag": "api",
+    "services": [
+      "HandlerService",
+      "LoggerService",
+      "StatsService"
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "api",
+      "listen": "127.0.0.1",
+      "port": 62789,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "AsIs",
+        "redirect": "",
+        "noises": []
+      }
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole",
+      "settings": {}
+    }
+  ],
+  "policy": {
+    "levels": {
+      "0": {
+        "statsUserDownlink": true,
+        "statsUserUplink": true
+      }
+    },
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true,
+      "statsOutboundDownlink": false,
+      "statsOutboundUplink": false
+    }
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "ip": [
+          "geoip:private"
+        ]
+      }
+    ]
+  },
+  "stats": {},
+  "metrics": {
+    "tag": "metrics_out",
+    "listen": "127.0.0.1:11111"
+  },
+  "dns": {
+    "servers": [
+      {
+        "address": "localhost",
+        "port": 53,
+        "domains": [],
+        "expectIPs": [],
+        "unexpectedIPs": [],
+        "queryStrategy": "UseSystem",
+        "skipFallback": false,
+        "disableCache": false,
+        "finalQuery": false
+      }
+    ],
+    "queryStrategy": "UseSystem",
+    "tag": "dns_inbound",
+    "enableParallelQuery": false,
+    "clientIp": "127.0.0.1"
+  },
+  "fakedns": null
+}');
+		 INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('1','1','first','0','0','0','0','0');
+		     INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('2','1','first_1','0','0','0','0','0');
+			INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('3','1','firstX','0','0','0','0','0');
              INSERT INTO "inbounds" ("user_id","up","down","total","remark","enable","expiry_time","listen","port","protocol","settings","stream_settings","tag","sniffing") VALUES ( 
              '1',
 	     '0',
