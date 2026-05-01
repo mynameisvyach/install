@@ -19,32 +19,6 @@ rm -rf /etc/nginx/sites-enabled/*
 rm -rf /etc/nginx/sites-available/*
 rm -rf /etc/nginx/stream-enabled/*
 
-##################################Disable IPv6#############################################################
-disable_ipv6() {
-    echo "Disabling IPv6..."
-    
-    # Disable IPv6 via sysctl
-    cat >> /etc/sysctl.conf << EOF
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
-EOF
-    
-    # Apply sysctl settings
-    sysctl -p
-    
-    # Disable IPv6 for current session
-    echo 1 > /proc/sys/net/ipv6/conf/all/disable_ipv6
-    echo 1 > /proc/sys/net/ipv6/conf/default/disable_ipv6
-    echo 1 > /proc/sys/net/ipv6/conf/lo/disable_ipv6
-    
-    # Blacklist IPv6 module
-    cat >> /etc/modprobe.d/disable_ipv6.conf << EOF
-options ipv6 disable=1
-EOF
-    
-    msg_ok "IPv6 has been disabled"
-}
 
 ##################################generate ports and paths#############################################################
 get_port() {
@@ -120,13 +94,11 @@ if [[ ${UNINSTALL} == *"y"* ]]; then
 	clear && msg_ok "Completely Uninstalled!" && exit 1
 fi
 
-# Disable IPv6 after uninstall check but before network operations
-disable_ipv6
 
 # --- get public IPv4 early (for auto-domain mode)
 IP4_REGEX="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
 IP4=$(ip route get 8.8.8.8 2>&1 | grep -Po -- 'src \K\S*')
-[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -4 -s ipv4.icanhazip.com | tr -d '[:space:]')
+[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -s ipv4.icanhazip.com | tr -d '[:space:]')
 
 
 if [[ ${AUTODOMAIN} == *"y"* ]]; then
@@ -190,8 +162,11 @@ systemctl stop nginx
 fuser -k 80/tcp 80/udp 443/tcp 443/udp 2>/dev/null
 ##################################GET SERVER IPv4-6#####################################################
 IP4_REGEX="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
+IP6_REGEX="([a-f0-9:]+:+)+[a-f0-9]+"
 IP4=$(ip route get 8.8.8.8 2>&1 | grep -Po -- 'src \K\S*')
-[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -4 -s ipv4.icanhazip.com);
+IP6=$(ip route get 2620:fe::fe 2>&1 | grep -Po -- 'src \K\S*')
+[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -s ipv4.icanhazip.com);
+[[ $IP6 =~ $IP6_REGEX ]] || IP6=$(curl -s ipv6.icanhazip.com);
 ##############################Install SSL###############################################################
 
 resolve_to_ip () {
@@ -294,6 +269,7 @@ server {
 	server_tokens off;
 	server_name ${domain};
 	listen 7443 ssl http2 proxy_protocol;
+	listen [::]:7443 ssl http2 proxy_protocol;
 	index index.html index.htm index.php index.nginx-debian.html;
 	root /var/www/html/;
 	ssl_protocols TLSv1.2 TLSv1.3;
@@ -348,51 +324,132 @@ server {
 EOF
 
 cat > "/etc/nginx/snippets/includes.conf" << EOF
-    #XHTTP
-    location /${xhttp_path} {
-      grpc_pass grpc://unix:/dev/shm/uds2023.sock;
-      grpc_buffer_size         16k;
-      grpc_socket_keepalive    on;
-      grpc_read_timeout        1h;
-      grpc_send_timeout        1h;
-      grpc_set_header Connection         "";
-      grpc_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
-      grpc_set_header X-Forwarded-Proto  \$scheme;
-      grpc_set_header X-Forwarded-Port   \$server_port;
-      grpc_set_header Host               \$host;
-      grpc_set_header X-Forwarded-Host   \$host;
+  	#sub2sing-box
+	location /${sub2singbox_path}/ {
+		proxy_redirect off;
+		proxy_set_header Host \$host;
+		proxy_set_header X-Real-IP \$remote_addr;
+		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+		proxy_pass http://127.0.0.1:8080/;
+		}
+    # Path to open clash.yaml and generate YAML
+    location ~ ^/${web_path}/clashmeta/(.+)$ {
+        default_type text/plain;
+        ssi on;
+        ssi_types text/plain;
+        set \$subid \$1;
+        root /var/www/subpage;
+        try_files /clash.yaml =404;
     }
-    #Xray Config Path
-    location ~ ^/(?<fwdport>\d+)/(?<fwdpath>.*)\$ {
-        if (\$hack = 1) {return 404;}
-        client_max_body_size 0;
-        client_body_timeout 1d;
-        grpc_read_timeout 1d;
-        grpc_socket_keepalive on;
-        proxy_read_timeout 1d;
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_socket_keepalive on;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        if (\$content_type ~* "GRPC") {
-            grpc_pass grpc://127.0.0.1:\$fwdport\$is_args\$args;
-            break;
-        }
-        if (\$http_upgrade ~* "(WEBSOCKET|WS)") {
-            proxy_pass http://127.0.0.1:\$fwdport\$is_args\$args;
-            break;
-        }
-        if (\$request_method ~* ^(PUT|POST|GET)\$) {
-            proxy_pass http://127.0.0.1:\$fwdport\$is_args\$args;
-            break;
-        }
+    # web
+    location ~ ^/${web_path} {
+        root /var/www/subpage;
+        index index.html;
+        try_files \$uri \$uri/ /index.html =404;
     }
-    location / { try_files \$uri \$uri/ =404; }
+ 	#Subscription Path (simple/encode)
+        location /${sub_path} {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+	location /${sub_path}/ {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+	location /assets/ {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+	location /assets {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+	#Subscription Path (json/fragment)
+        location /${json_path} {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+	location /${json_path}/ {
+                if (\$hack = 1) {return 404;}
+                proxy_redirect off;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_pass https://127.0.0.1:${sub_port};
+                break;
+        }
+        #XHTTP
+        location /${xhttp_path} {
+          grpc_pass grpc://unix:/dev/shm/uds2023.sock;
+          grpc_buffer_size         16k;
+          grpc_socket_keepalive    on;
+          grpc_read_timeout        1h;
+          grpc_send_timeout        1h;
+          grpc_set_header Connection         "";
+          grpc_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
+          grpc_set_header X-Forwarded-Proto  \$scheme;
+          grpc_set_header X-Forwarded-Port   \$server_port;
+          grpc_set_header Host               \$host;
+          grpc_set_header X-Forwarded-Host   \$host;
+          }
+ 	#Xray Config Path
+	location ~ ^/(?<fwdport>\d+)/(?<fwdpath>.*)\$ {
+		if (\$hack = 1) {return 404;}
+		client_max_body_size 0;
+		client_body_timeout 1d;
+		grpc_read_timeout 1d;
+		grpc_socket_keepalive on;
+		proxy_read_timeout 1d;
+		proxy_http_version 1.1;
+		proxy_buffering off;
+		proxy_request_buffering off;
+		proxy_socket_keepalive on;
+		proxy_set_header Upgrade \$http_upgrade;
+		proxy_set_header Connection "upgrade";
+		proxy_set_header Host \$host;
+		proxy_set_header X-Real-IP \$remote_addr;
+		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+		#proxy_set_header CF-IPCountry \$http_cf_ipcountry;
+		#proxy_set_header CF-IP \$realip_remote_addr;
+		if (\$content_type ~* "GRPC") {
+			grpc_pass grpc://127.0.0.1:\$fwdport\$is_args\$args;
+			break;
+		}
+		if (\$http_upgrade ~* "(WEBSOCKET|WS)") {
+			proxy_pass http://127.0.0.1:\$fwdport\$is_args\$args;
+			break;
+	        }
+		if (\$request_method ~* ^(PUT|POST|GET)\$) {
+			proxy_pass http://127.0.0.1:\$fwdport\$is_args\$args;
+			break;
+		}
+	}
+	location / { try_files \$uri \$uri/ =404; }
 EOF
 
 cat > "/etc/nginx/sites-available/${reality_domain}" << EOF
@@ -400,6 +457,7 @@ server {
 	server_tokens off;
 	server_name ${reality_domain};
 	listen 9443 ssl http2;
+	listen [::]:9443 ssl http2;
 	index index.html index.htm index.php index.nginx-debian.html;
 	root /var/www/html/;
 	ssl_protocols TLSv1.2 TLSv1.3;
@@ -450,6 +508,7 @@ else
 	systemctl start nginx 
 fi
 
+
 ##############################generate uri's###########################################################
 sub_uri=https://${domain}/${sub_path}/
 json_uri=https://${domain}/${web_path}?name=
@@ -468,7 +527,8 @@ if [[ -f $XUIDB ]]; then
         client_id=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         client_id2=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         client_id3=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
-        emoji_flag=$(LC_ALL=en_US.UTF-8 curl -4 -s https://ipwho.is/ | jq -r '.flag.emoji')
+        trojan_pass=$(gen_random_string 10)
+        emoji_flag=$(LC_ALL=en_US.UTF-8 curl -s https://ipwho.is/ | jq -r '.flag.emoji')
 
             # Настройка Telegram бота
         echo ""
@@ -634,6 +694,7 @@ if [[ -f $XUIDB ]]; then
              INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('1','1','first','0','0','0','0','0');
 	     INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('2','1','first_1','0','0','0','0','0');
 		   INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('3','1','firstX','0','0','0','0','0');
+	     INSERT INTO "client_traffics" ("inbound_id","enable","email","up","down","expiry_time","total","reset") VALUES ('4','1','firstT','0','0','0','0','0');
              INSERT INTO "inbounds" ("user_id","up","down","total","remark","enable","expiry_time","listen","port","protocol","settings","stream_settings","tag","sniffing") VALUES ( 
              '1',
 	     '0',
@@ -793,7 +854,7 @@ if [[ -f $XUIDB ]]; then
              '0',
 	     '0',
              '${emoji_flag} xhttp',
-	     '1',
+	     '0',
              '0',
 	     '/dev/shm/uds2023.sock,0666',
              '0',
@@ -870,6 +931,66 @@ if [[ -f $XUIDB ]]; then
   "routeOnly": false
 }'
 	     );
+	INSERT INTO "inbounds" ("user_id","up","down","total","remark","enable","expiry_time","listen","port","protocol","settings","stream_settings","tag","sniffing") VALUES ( 
+	     '1',
+	     '0',
+         '0',
+	     '0',
+         '${emoji_flag} trojan-grpc',
+	     '1',
+         '0',
+		 '',
+		 '${trojan_port}',
+		 'trojan',
+		 '{
+  "clients": [
+    {
+      "comment": "",
+      "created_at": 1756726925000,
+      "email": "firstT",
+      "enable": true,
+      "expiryTime": 0,
+      "limitIp": 0,
+      "password": "${trojan_pass}",
+      "reset": 0,
+      "subId": "first",
+      "tgId": 0,
+      "totalGB": 0,
+      "updated_at": 1756726925000
+    }
+  ],
+  "fallbacks": []
+}',
+'{
+  "network": "grpc",
+  "security": "none",
+  "externalProxy": [
+    {
+      "forceTls": "tls",
+      "dest": "${domain}",
+      "port": 443,
+      "remark": ""
+    }
+  ],
+  "grpcSettings": {
+    "serviceName": "/${trojan_port}/${trojan_path}",
+    "authority": "${domain}",
+    "multiMode": false
+  }
+}',
+'inbound-${trojan_port}',
+'{
+  "enabled": false,
+  "destOverride": [
+    "http",
+    "tls",
+    "quic",
+    "fakedns"
+  ],
+  "metadataOnly": false,
+  "routeOnly": false
+}'
+	);
 EOF
 /usr/local/x-ui/x-ui setting -username "${config_username}" -password "${config_password}" -port "${panel_port}" -webBasePath "${panel_path}"
 /usr/local/x-ui/x-ui cert -webCert "/root/cert/${domain}/fullchain.pem" -webCertKey "/root/cert/${domain}/privkey.pem"
@@ -902,7 +1023,7 @@ apt-get update && apt-get install -y -q wget curl tar tzdata
     
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -4 -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(curl -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
             tag_version=$(curl -4 -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -912,7 +1033,7 @@ apt-get update && apt-get install -y -q wget curl tar tzdata
             fi
         fi
         echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        wget -4 -N -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+        wget -N -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
             exit 1
@@ -929,13 +1050,13 @@ apt-get update && apt-get install -y -q wget curl tar tzdata
         
         url="https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
         echo -e "Beginning to install x-ui $1"
-        wget -4 -N -O /usr/local/x-ui-linux-$(arch).tar.gz ${url}
+        wget -N -O /usr/local/x-ui-linux-$(arch).tar.gz ${url}
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
             exit 1
         fi
     fi
-    wget -4 -O /usr/bin/x-ui-temp https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
+    wget -O /usr/bin/x-ui-temp https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
     if [[ $? -ne 0 ]]; then
         echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
@@ -1036,16 +1157,74 @@ echo "net.ipv4.tcp_wmem = 4096 65536 16777216" | tee -a /etc/sysctl.conf
 
 sysctl -p
 
+
+######################install_sub2sing-box#################################################################
+
+# if pgrep -x "sub2sing-box" > /dev/null; then
+#     echo "kill sub2sing-box..."
+#     pkill -x "sub2sing-box"
+# fi
+# if [ -f "/usr/bin/sub2sing-box" ]; then
+#     echo "delete sub2sing-box..."
+#     rm -f /usr/bin/sub2sing-box
+# fi
+# wget -P /root/ https://github.com/legiz-ru/sub2sing-box/releases/download/v0.0.9/sub2sing-box_0.0.9_linux_amd64.tar.gz
+# tar -xvzf /root/sub2sing-box_0.0.9_linux_amd64.tar.gz -C /root/ --strip-components=1 sub2sing-box_0.0.9_linux_amd64/sub2sing-box
+# mv /root/sub2sing-box /usr/bin/
+# chmod +x /usr/bin/sub2sing-box
+# rm /root/sub2sing-box_0.0.9_linux_amd64.tar.gz
+# su -c "/usr/bin/sub2sing-box server --bind 127.0.0.1 --port 8080 & disown" root
+
+######################install_fake_site#################################################################
+
+sudo su -c "bash <(wget -qO- https://raw.githubusercontent.com/mynameisvyach/install/refs/heads/main/fakehtml.sh)"
+
+######################install_web_sub_page##############################################################
+
+# URL_SUB_PAGE=( "https://github.com/legiz-ru/x-ui-pro/raw/master/sub-3x-ui.html"
+# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/sub-3x-ui-classical.html"
+# 	)
+# URL_CLASH_SUB=( "https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash.yaml"
+# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_skrepysh.yaml"
+# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_fullproxy_without_ru.yaml"
+#   		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_refilter_ech.yaml"
+# 	)
+# DEST_DIR_SUB_PAGE="/var/www/subpage"
+# DEST_FILE_SUB_PAGE="$DEST_DIR_SUB_PAGE/index.html"
+# DEST_FILE_CLASH_SUB="$DEST_DIR_SUB_PAGE/clash.yaml"
+
+# sudo mkdir -p "$DEST_DIR_SUB_PAGE"
+
+# sudo curl -L "${URL_CLASH_SUB[$CLASH]}" -o "$DEST_FILE_CLASH_SUB"
+# sudo curl -L "${URL_SUB_PAGE[$CUSTOMWEBSUB]}" -o "$DEST_FILE_SUB_PAGE"
+
+# sed -i "s/\${DOMAIN}/$domain/g" "$DEST_FILE_SUB_PAGE"
+# sed -i "s/\${DOMAIN}/$domain/g" "$DEST_FILE_CLASH_SUB"
+# sed -i "s#\${SUB_JSON_PATH}#$json_path#g" "$DEST_FILE_SUB_PAGE"
+# sed -i "s#\${SUB_PATH}#$sub_path#g" "$DEST_FILE_SUB_PAGE"
+# sed -i "s#\${SUB_PATH}#$sub_path#g" "$DEST_FILE_CLASH_SUB"
+# sed -i "s|sub.legiz.ru|$domain/$sub2singbox_path|g" "$DEST_FILE_SUB_PAGE"
+
+#while true; do	
+#	if [[ -n "$tg_escaped_link" ]]; then
+#		break
+#	fi
+#	echo -en "Enter your support link for web sub page (example https://t.me/durov/ ): " && read tg_escaped_link
+#done
+
+#sed -i -e "s|https://t.me/gozargah_marzban|$tg_escaped_link|g" -e "s|https://github.com/Gozargah/Marzban#donation|$tg_escaped_link|g" "$DEST_FILE_SUB_PAGE"
+
 ######################cronjob for ssl/reload service/cloudflareips######################################
 crontab -l | grep -v "certbot\|x-ui\|cloudflareips" | crontab -
+# (crontab -l 2>/dev/null; echo '@reboot /usr/bin/sub2sing-box server --bind 127.0.0.1 --port 8080 > /dev/null 2>&1') | crontab -
 (crontab -l 2>/dev/null; echo '@daily x-ui restart > /dev/null 2>&1 && nginx -s reload;') | crontab -
 (crontab -l 2>/dev/null; echo '@monthly certbot renew --nginx --non-interactive --post-hook "nginx -s reload" > /dev/null 2>&1;') | crontab -
 ##################################ufw###################################################################
-ufw disable
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable  
+# ufw disable
+# ufw allow 22/tcp
+# ufw allow 80/tcp
+# ufw allow 443/tcp
+# ufw --force enable  
 ##################################Show Details##########################################################
 
 if systemctl is-active --quiet x-ui; then clear
@@ -1060,6 +1239,9 @@ if systemctl is-active --quiet x-ui; then clear
  	echo -e "Username:  ${config_username} \n" 
 	echo -e "Password:  ${config_password} \n" 
 	msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+    msg_inf "Web Sub Page your first client: https://${domain}/${web_path}?name=first\n"
+    msg_inf "Your local sub2sing-box instance: https://${domain}/$sub2singbox_path/\n"
+  msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 	msg_inf "Please Save this Screen!!"	
 else
 	nginx -t && printf '0\n' | x-ui | grep --color=never -i ':'
