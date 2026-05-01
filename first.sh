@@ -68,7 +68,7 @@ echo -e "${GREEN}Виртуальное окружение настроено!${
 echo -e "${YELLOW}[6/8] Настройка SSH (PubkeyAuthentication)...${NC}"
 sudo sed -i "s/#PubkeyAuthentication yes/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
 sudo sed -i "s/PubkeyAuthentication no/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
-sudo systemctl restart sshd
+sudo systemctl restart ssh
 echo -e "${GREEN}SSH настроен!${NC}"
 
 # Установка Fail2Ban
