@@ -34,8 +34,17 @@ echo -e "${YELLOW}[3/8] Установка Python и venv...${NC}"
 sudo apt install python3 python3-pip python3-venv -y
 echo -e "${GREEN}Python установлен успешно!${NC}"
 
+# Проверка и установка SSH сервера
+echo -e "${YELLOW}[4/8] Проверка и установка SSH сервера...${NC}"
+if ! systemctl list-unit-files | grep -q "ssh.service"; then
+    echo -e "${YELLOW}SSH сервер не найден. Устанавливаю...${NC}"
+    sudo apt install openssh-server -y
+fi
+sudo systemctl enable ssh --now
+echo -e "${GREEN}SSH сервер установлен и запущен!${NC}"
+
 # Вопрос про перенос ботов
-echo -e "${YELLOW}[4/8] Вопрос пользователю...${NC}"
+echo -e "${YELLOW}[5/8] Вопрос пользователю...${NC}"
 while true; do
     read -p "Вы перенесли ботов в папку /home/TelegramBots? (yes/no): " answer
     case $answer in
@@ -54,7 +63,7 @@ while true; do
 done
 
 # Переход в папку с ботами и настройка виртуального окружения
-echo -e "${YELLOW}[5/8] Настройка виртуального окружения Python...${NC}"
+echo -e "${YELLOW}[6/8] Настройка виртуального окружения Python...${NC}"
 cd /home/TelegramBots || { echo -e "${RED}Папка /home/TelegramBots не найдена!${NC}"; exit 1; }
 
 python3 -m venv venv
@@ -64,34 +73,40 @@ pip3 install -r https://raw.githubusercontent.com/mynameisvyach/install/refs/hea
 deactivate
 echo -e "${GREEN}Виртуальное окружение настроено!${NC}"
 
-# Настройка SSH
-echo -e "${YELLOW}[6/8] Настройка SSH (PubkeyAuthentication)...${NC}"
+# Настройка SSH (PubkeyAuthentication)
+echo -e "${YELLOW}[7/8] Настройка SSH (PubkeyAuthentication)...${NC}"
 sudo sed -i "s/#PubkeyAuthentication yes/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
 sudo sed -i "s/PubkeyAuthentication no/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
 sudo systemctl restart ssh
 echo -e "${GREEN}SSH настроен!${NC}"
 
 # Установка Fail2Ban
-echo -e "${YELLOW}[7/8] Установка Fail2Ban...${NC}"
+echo -e "${YELLOW}[8/9] Установка Fail2Ban...${NC}"
 sudo apt install fail2ban -y
 sudo systemctl enable fail2ban --now
 echo -e "${GREEN}Fail2Ban установлен и запущен!${NC}"
 sudo systemctl status fail2ban --no-pager
 
 # Настройка Fail2Ban (опционально)
-echo -e "${YELLOW}[8/8] Настройка Fail2Ban...${NC}"
+echo -e "${YELLOW}[9/9] Настройка Fail2Ban...${NC}"
+
+# Небольшая задержка, чтобы fail2ban полностью инициализировался
+sleep 2
+
 read -p "Хотите добавить IP в ignorelist Fail2Ban? (yes/no): " add_ip
 if [[ $add_ip == "yes" || $add_ip == "YES" || $add_ip == "y" ]]; then
     read -p "Введите IP адрес для добавления в ignorelist: " ip_address
-    sudo fail2ban-client set DEFAULT addignoreip $ip_address
-    echo -e "${GREEN}IP $ip_address добавлен в ignorelist${NC}"
+    # ИСПРАВЛЕНО: используем sshd вместо DEFAULT
+    sudo fail2ban-client set sshd addignoreip $ip_address
+    echo -e "${GREEN}IP $ip_address добавлен в ignorelist для тюрьмы sshd${NC}"
 fi
 
 read -p "Хотите разбанить какой-либо IP? (yes/no): " unban_ip
 if [[ $unban_ip == "yes" || $unban_ip == "YES" || $unban_ip == "y" ]]; then
     read -p "Введите IP адрес для разбана: " ip_to_unban
-    sudo fail2ban-client unban $ip_to_unban
-    echo -e "${GREEN}IP $ip_to_unban разбанен${NC}"
+    # ИСПРАВЛЕНО: разбан для конкретной тюрьмы
+    sudo fail2ban-client set sshd unbanip $ip_to_unban
+    echo -e "${GREEN}IP $ip_to_unban разбанен в тюрьме sshd${NC}"
 fi
 
 # Перезагрузка
