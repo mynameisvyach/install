@@ -1,5 +1,5 @@
 #!/bin/bash
-#################### x-ui-pro v2.4.3 @ github.com/GFW4Fun ##############################################
+#################### x-ui-pro v2.4.3 ##############################################
 [[ $EUID -ne 0 ]] && echo "not root!" && sudo su -
 ##############################INFO######################################################################
 msg_ok() { echo -e "\e[1;42m $1 \e[0m";}
@@ -11,7 +11,7 @@ msg_inf		 ' /\    |_| _|_   |   | \ \_/ '	; echo
 ##################################Variables#############################################################
 XUIDB="/etc/x-ui/x-ui.db";domain="";UNINSTALL="x";INSTALL="n";PNLNUM=1;CFALLOW="n";CLASH=0;CUSTOMWEBSUB=0
 Pak=$(type apt &>/dev/null && echo "apt" || echo "yum")
-systemctl stop x-ui
+systemctl stop x-ui 2>/dev/null
 rm -rf /etc/systemd/system/x-ui.service
 rm -rf /usr/local/x-ui
 rm -rf /etc/x-ui
@@ -27,7 +27,7 @@ get_port() {
 
 gen_random_string() {
     local length="$1"
-    head -c 4096 /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c "$length"
+    head -c 4096 /dev/urandom 2>/dev/null | tr -dc 'a-zA-Z0-9' | head -c "$length"
     echo
 }
 check_free() {
@@ -78,12 +78,12 @@ done
 
 ##############################Uninstall#################################################################
 UNINSTALL_XUI(){
-	printf 'y\n' | x-ui uninstall
+	printf 'y\n' | x-ui uninstall 2>/dev/null
 	rm -rf "/etc/x-ui/" "/usr/local/x-ui/" "/usr/bin/x-ui/"
-	$Pak -y remove nginx nginx-common nginx-core nginx-full python3-certbot-nginx
-	$Pak -y purge nginx nginx-common nginx-core nginx-full python3-certbot-nginx
-	$Pak -y autoremove
-	$Pak -y autoclean
+	$Pak -y remove nginx nginx-common nginx-core nginx-full python3-certbot-nginx 2>/dev/null
+	$Pak -y purge nginx nginx-common nginx-core nginx-full python3-certbot-nginx 2>/dev/null
+	$Pak -y autoremove 2>/dev/null
+	$Pak -y autoclean 2>/dev/null
 	rm -rf "/var/www/html/" "/etc/nginx/" "/usr/share/nginx/" 
 }
 if [[ ${UNINSTALL} == *"y"* ]]; then
@@ -101,11 +101,54 @@ IP4=$(ip route get 8.8.8.8 2>&1 | grep -Po -- 'src \K\S*')
 if [[ ${AUTODOMAIN} == *"y"* ]]; then
     # panel domain: x.x.x.x.cdn-one.org
     domain="${IP4}.cdn-one.org"
-
     # reality domain: x-x-x-x.cdn-one.org
     reality_domain="${IP4//./-}.cdn-one.org"
 fi
 
+##############################Package Installation########################################################
+# Отключаем другие фаерволы
+systemctl stop firewalld 2>/dev/null
+systemctl disable firewalld 2>/dev/null
+systemctl stop nftables 2>/dev/null
+systemctl disable nftables 2>/dev/null
+
+# Отключаем IPv6 в системе
+cat > /etc/sysctl.d/99-disable-ipv6.conf << EOF
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+EOF
+sysctl -p /etc/sysctl.d/99-disable-ipv6.conf 2>/dev/null
+
+# Отключаем ufw и IPv6 в ufw
+ufw disable 2>/dev/null
+sed -i 's/IPV6=yes/IPV6=no/g' /etc/default/ufw 2>/dev/null
+
+# Устанавливаем пакеты если указан флаг -install y ИЛИ если пакеты не установлены
+NEED_INSTALL=0
+if [[ ${INSTALL} == *"y"* ]]; then
+    NEED_INSTALL=1
+else
+    # Проверяем установлен ли certbot
+    if ! command -v certbot &>/dev/null; then
+        NEED_INSTALL=1
+        msg_inf "certbot not found, will install required packages..."
+    fi
+fi
+
+if [[ $NEED_INSTALL -eq 1 ]]; then
+    version=$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release 2>/dev/null || echo "20")
+    # Проверяем, является ли версия 20 или 22
+    if [[ "$version" == "20" || "$version" == "22" ]]; then
+        echo "Версия системы: Ubuntu $version"
+    fi
+    
+    $Pak -y update
+    $Pak -y install curl wget jq bash sudo nginx-full certbot python3-certbot-nginx sqlite3 ufw
+fi
+
+systemctl stop nginx 2>/dev/null
+fuser -k 80/tcp 80/udp 443/tcp 443/udp 2>/dev/null
 
 ##############################Domain Validations########################################################
 while true; do	
@@ -138,49 +181,14 @@ if [[ "${RealitySubDomain}.${RealityMainDomain}" != "${reality_domain}" ]] ; the
 	RealityMainDomain=${reality_domain}
 fi
 
-###############################Install Packages#########################################################
-# Отключаем другие фаерволы
-systemctl stop firewalld 2>/dev/null
-systemctl disable firewalld 2>/dev/null
-systemctl stop nftables 2>/dev/null
-systemctl disable nftables 2>/dev/null
-
-# Отключаем IPv6 в системе
-cat > /etc/sysctl.d/99-disable-ipv6.conf << EOF
-net.ipv6.conf.all.disable_ipv6 = 1
-net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
-EOF
-sysctl -p /etc/sysctl.d/99-disable-ipv6.conf
-
-# Отключаем ufw и IPv6 в ufw
-ufw disable
-sed -i 's/IPV6=yes/IPV6=no/g' /etc/default/ufw 2>/dev/null
-
-if [[ ${INSTALL} == *"y"* ]]; then
-
-         version=$(grep -oP '(?<=VERSION_ID=")[0-9]+' /etc/os-release)
-
-         # Проверяем, является ли версия 20 или 22
-        if [[ "$version" == "20" || "$version" == "22" ]]; then
-              echo "Версия системы: Ubuntu $version"
-        fi
-
-	$Pak -y update
-
-	$Pak -y install curl wget jq bash sudo nginx-full certbot python3-certbot-nginx sqlite3 ufw
-
-	systemctl daemon-reload && systemctl enable --now nginx
-fi
-systemctl stop nginx 
-fuser -k 80/tcp 80/udp 443/tcp 443/udp 2>/dev/null
 ##################################GET SERVER IPv4-6#####################################################
 IP4_REGEX="^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"
 IP6_REGEX="([a-f0-9:]+:+)+[a-f0-9]+"
 IP4=$(ip route get 8.8.8.8 2>&1 | grep -Po -- 'src \K\S*')
 IP6=$(ip route get 2620:fe::fe 2>&1 | grep -Po -- 'src \K\S*')
-[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -s ipv4.icanhazip.com);
-[[ $IP6 =~ $IP6_REGEX ]] || IP6=$(curl -s ipv6.icanhazip.com);
+[[ $IP4 =~ $IP4_REGEX ]] || IP4=$(curl -s ipv4.icanhazip.com 2>/dev/null);
+[[ $IP6 =~ $IP6_REGEX ]] || IP6=$(curl -s ipv6.icanhazip.com 2>/dev/null);
+
 ##############################Install SSL###############################################################
 
 resolve_to_ip () {
@@ -202,16 +210,21 @@ if [[ ${AUTODOMAIN} == *"y"* ]]; then
     fi
 fi
 
+# Проверяем установлен ли certbot перед использованием
+if ! command -v certbot &>/dev/null; then
+    msg_err "certbot is not installed! Please run with -install y flag or install certbot manually."
+    exit 1
+fi
 
 certbot certonly --standalone --non-interactive --agree-tos --register-unsafely-without-email -d "$domain"
 if [[ ! -d "/etc/letsencrypt/live/${domain}/" ]]; then
- 	systemctl start nginx >/dev/null 2>&1
+ 	systemctl start nginx 2>/dev/null
 	msg_err "$domain SSL could not be generated! Check Domain/IP Or Enter new domain!" && exit 1
 fi
 
 certbot certonly --standalone --non-interactive --agree-tos --register-unsafely-without-email -d "$reality_domain"
 if [[ ! -d "/etc/letsencrypt/live/${reality_domain}/" ]]; then
- 	systemctl start nginx >/dev/null 2>&1
+ 	systemctl start nginx 2>/dev/null
 	msg_err "$reality_domain SSL could not be generated! Check Domain/IP Or Enter new domain!" && exit 1
 fi
 
@@ -233,8 +246,8 @@ fi
 mkdir -p /root/cert/${domain}
 chmod 755 /root/cert/*
 
-ln -s /etc/letsencrypt/live/${domain}/fullchain.pem /root/cert/${domain}/fullchain.pem
-ln -s /etc/letsencrypt/live/${domain}/privkey.pem /root/cert/${domain}/privkey.pem
+ln -s /etc/letsencrypt/live/${domain}/fullchain.pem /root/cert/${domain}/fullchain.pem 2>/dev/null
+ln -s /etc/letsencrypt/live/${domain}/privkey.pem /root/cert/${domain}/privkey.pem 2>/dev/null
 
 mkdir -p /etc/nginx/stream-enabled
 cat > "/etc/nginx/stream-enabled/stream.conf" << EOF
@@ -263,10 +276,10 @@ server {
 
 EOF
 
-grep -xqFR "stream { include /etc/nginx/stream-enabled/*.conf; }" /etc/nginx/* ||echo "stream { include /etc/nginx/stream-enabled/*.conf; }" >> /etc/nginx/nginx.conf
-grep -xqFR "load_module modules/ngx_stream_module.so;" /etc/nginx/* || sed -i '1s/^/load_module \/usr\/lib\/nginx\/modules\/ngx_stream_module.so; /' /etc/nginx/nginx.conf
-grep -xqFR "load_module modules/ngx_stream_geoip2_module.so;" /etc/nginx* || sed -i '2s/^/load_module \/usr\/lib\/nginx\/modules\/ngx_stream_geoip2_module.so; /' /etc/nginx/nginx.conf
-grep -xqFR "worker_rlimit_nofile 16384;" /etc/nginx/* ||echo "worker_rlimit_nofile 16384;" >> /etc/nginx/nginx.conf
+grep -xqFR "stream { include /etc/nginx/stream-enabled/*.conf; }" /etc/nginx/* 2>/dev/null || echo "stream { include /etc/nginx/stream-enabled/*.conf; }" >> /etc/nginx/nginx.conf
+grep -xqFR "load_module modules/ngx_stream_module.so;" /etc/nginx/* 2>/dev/null || sed -i '1s/^/load_module \/usr\/lib\/nginx\/modules\/ngx_stream_module.so; /' /etc/nginx/nginx.conf
+grep -xqFR "load_module modules/ngx_stream_geoip2_module.so;" /etc/nginx* 2>/dev/null || sed -i '2s/^/load_module \/usr\/lib\/nginx\/modules\/ngx_stream_geoip2_module.so; /' /etc/nginx/nginx.conf
+grep -xqFR "worker_rlimit_nofile 16384;" /etc/nginx/* 2>/dev/null || echo "worker_rlimit_nofile 16384;" >> /etc/nginx/nginx.conf
 sed -i "/worker_connections/c\worker_connections 4096;" /etc/nginx/nginx.conf
 cat > "/etc/nginx/sites-available/80.conf" << EOF
 server {
@@ -455,7 +468,7 @@ if [[ -f $XUIDB ]]; then
         client_id=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         client_id2=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
         client_id3=$(/usr/local/x-ui/bin/xray-linux-amd64 uuid)
-        emoji_flag=$(LC_ALL=en_US.UTF-8 curl -s https://ipwho.is/ | jq -r '.flag.emoji')
+        emoji_flag=$(LC_ALL=en_US.UTF-8 curl -s https://ipwho.is/ | jq -r '.flag.emoji' 2>/dev/null || echo "🌐")
 		
 		# Запрос параметров Telegram бота
         echo ""
@@ -1025,7 +1038,7 @@ else
 fi
 
 ######################enable bbr and tune system########################################################
-apt-get install -yqq --no-install-recommends ca-certificates
+apt-get install -yqq --no-install-recommends ca-certificates 2>/dev/null
 echo "net.core.default_qdisc=fq" | tee -a /etc/sysctl.conf
 echo "net.ipv4.tcp_congestion_control=bbr" | tee -a /etc/sysctl.conf
 echo "fs.file-max=2097152" | tee -a /etc/sysctl.conf
@@ -1037,35 +1050,36 @@ echo "net.core.wmem_max = 16777216" | tee -a /etc/sysctl.conf
 echo "net.ipv4.tcp_rmem = 4096 87380 16777216" | tee -a /etc/sysctl.conf
 echo "net.ipv4.tcp_wmem = 4096 65536 16777216" | tee -a /etc/sysctl.conf
 
-sysctl -p
+sysctl -p 2>/dev/null
 
 ######################cronjob for ssl/reload service/cloudflareips######################################
-crontab -l | grep -v "certbot\|x-ui\|cloudflareips" | crontab -
-(crontab -l 2>/dev/null; echo '@daily x-ui restart > /dev/null 2>&1 && nginx -s reload;') | crontab -
-(crontab -l 2>/dev/null; echo '@monthly certbot renew --nginx --non-interactive --post-hook "nginx -s reload" > /dev/null 2>&1;') | crontab -
+crontab -l 2>/dev/null | grep -v "certbot\|x-ui\|cloudflareips" | crontab - 2>/dev/null
+(crontab -l 2>/dev/null; echo '@daily x-ui restart > /dev/null 2>&1 && nginx -s reload;') | crontab - 2>/dev/null
+(crontab -l 2>/dev/null; echo '@monthly certbot renew --nginx --non-interactive --post-hook "nginx -s reload" > /dev/null 2>&1;') | crontab - 2>/dev/null
 
 ##################################Configure UFW##########################################################
-echo "y" | ufw reset
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 8443/tcp
-ufw allow 9443/tcp
-ufw allow ${panel_port}/tcp
-echo "y" | ufw enable
-ufw reload
+echo "y" | ufw reset 2>/dev/null
+ufw default deny incoming 2>/dev/null
+ufw default allow outgoing 2>/dev/null
+ufw allow 22/tcp 2>/dev/null
+ufw allow 80/tcp 2>/dev/null
+ufw allow 443/tcp 2>/dev/null
+ufw allow 8443/tcp 2>/dev/null
+ufw allow 9443/tcp 2>/dev/null
+ufw allow ${panel_port}/tcp 2>/dev/null
+echo "y" | ufw enable 2>/dev/null
+ufw reload 2>/dev/null
 msg_ok "UFW configured"
 
 ##################################Show Details##########################################################
 
-if systemctl is-active --quiet x-ui; then clear
+if systemctl is-active --quiet x-ui; then 
+	clear
 	printf '0\n' | x-ui | grep --color=never -i ':'
 	msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
-	nginx -T | grep -i 'ssl_certificate\|ssl_certificate_key'
+	nginx -T 2>/dev/null | grep -i 'ssl_certificate\|ssl_certificate_key'
 	msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
-	certbot certificates | grep -i 'Path:\|Domains:\|Expiry Date:'
+	certbot certificates 2>/dev/null | grep -i 'Path:\|Domains:\|Expiry Date:'
 
 
  msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -1077,7 +1091,7 @@ if systemctl is-active --quiet x-ui; then clear
   msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 	msg_inf "Please Save this Screen!!"	
 else
-	nginx -t && printf '0\n' | x-ui | grep --color=never -i ':'
+	nginx -t 2>/dev/null && printf '0\n' | x-ui | grep --color=never -i ':'
 	msg_err "sqlite and x-ui to be checked, try on a new clean linux! "
 fi
 #################################################N-joy##################################################
