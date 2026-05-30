@@ -49,7 +49,6 @@ make_port() {
 sub_port=$(make_port)
 panel_port=$(make_port)
 web_path=$(gen_random_string 10)
-sub2singbox_path=$(gen_random_string 10)
 sub_path=$(gen_random_string 10)
 json_path=$(gen_random_string 10)
 panel_path=$(gen_random_string 10)
@@ -241,9 +240,9 @@ upstream www {
 }
 
 server {
-    proxy_protocol on;
     set_real_ip_from unix:;
-    listen          443;
+    proxy_protocol on;
+    listen          443 proxy_protocol;
     proxy_pass      \$sni_name;
     ssl_preread     on;
 }
@@ -268,6 +267,10 @@ cat > "/etc/nginx/sites-available/${domain}" << EOF
 server {
 	server_tokens off;
 	server_name ${domain};
+    
+    set_real_ip_from 127.0.0.1;
+    real_ip_header proxy_protocol;
+    
 	listen 7443 ssl http2 proxy_protocol;
 	listen [::]:7443 ssl http2 proxy_protocol;
 	index index.html index.htm index.php index.nginx-debian.html;
@@ -276,6 +279,7 @@ server {
 	ssl_ciphers HIGH:!aNULL:!eNULL:!MD5:!DES:!RC4:!ADH:!SSLv3:!EXP:!PSK:!DSS;
 	ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
 	ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
+	
 	if (\$host !~* ^(.+\.)?$domain\$ ){return 444;}
 	if (\$scheme ~* https) {set \$safe 1;}
 	if (\$ssl_server_name !~* ^(.+\.)?$domain\$ ) {set \$safe "\${safe}0"; }
@@ -283,6 +287,17 @@ server {
 	if (\$request_uri ~ "(\"|'|\`|~|,|:|--|;|%|\\$|&&|\?\?|0x00|0X00|\||\\|\{|\}|\[|\]|<|>|\.\.\.|\.\.\/|\/\/\/)"){set \$hack 1;}
 	error_page 400 401 402 403 500 501 502 503 504 =404 /404;
 	proxy_intercept_errors on;
+	
+	location /redirect {
+		set \$safe_link \$arg_link;
+		
+		if (\$safe_link !~* "^(happ://|tg://|https://t\\.me/)") {
+			return 403 "Forbidden: only happ://, tg://, and https://t.me/ links are allowed";
+		}
+		
+		return 302 \$safe_link;
+	}
+	
 	#X-UI Admin Panel
 	location /${panel_path}/ {
         proxy_http_version 1.1;
@@ -294,7 +309,7 @@ server {
 		proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
-
+        grpc_set_header X-Real-IP \$remote_addr;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
 
@@ -324,29 +339,6 @@ server {
 EOF
 
 cat > "/etc/nginx/snippets/includes.conf" << EOF
-  	#sub2sing-box
-	location /${sub2singbox_path}/ {
-		proxy_redirect off;
-		proxy_set_header Host \$host;
-		proxy_set_header X-Real-IP \$remote_addr;
-		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-		proxy_pass http://127.0.0.1:8080/;
-		}
-    # Path to open clash.yaml and generate YAML
-    location ~ ^/${web_path}/clashmeta/(.+)$ {
-        default_type text/plain;
-        ssi on;
-        ssi_types text/plain;
-        set \$subid \$1;
-        root /var/www/subpage;
-        try_files /clash.yaml =404;
-    }
-    # web
-    location ~ ^/${web_path} {
-        root /var/www/subpage;
-        index index.html;
-        try_files \$uri \$uri/ /index.html =404;
-    }
  	#Subscription Path (simple/encode)
         location /${sub_path} {
                 if (\$hack = 1) {return 404;}
@@ -358,24 +350,6 @@ cat > "/etc/nginx/snippets/includes.conf" << EOF
                 break;
         }
 	location /${sub_path}/ {
-                if (\$hack = 1) {return 404;}
-                proxy_redirect off;
-                proxy_set_header Host \$host;
-                proxy_set_header X-Real-IP \$remote_addr;
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                proxy_pass https://127.0.0.1:${sub_port};
-                break;
-        }
-	location /assets/ {
-                if (\$hack = 1) {return 404;}
-                proxy_redirect off;
-                proxy_set_header Host \$host;
-                proxy_set_header X-Real-IP \$remote_addr;
-                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                proxy_pass https://127.0.0.1:${sub_port};
-                break;
-        }
-	location /assets {
                 if (\$hack = 1) {return 404;}
                 proxy_redirect off;
                 proxy_set_header Host \$host;
@@ -411,6 +385,7 @@ cat > "/etc/nginx/snippets/includes.conf" << EOF
           grpc_read_timeout        1h;
           grpc_send_timeout        1h;
           grpc_set_header Connection         "";
+          grpc_set_header X-Real-IP \$remote_addr;
           grpc_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
           grpc_set_header X-Forwarded-Proto  \$scheme;
           grpc_set_header X-Forwarded-Port   \$server_port;
@@ -434,8 +409,6 @@ cat > "/etc/nginx/snippets/includes.conf" << EOF
 		proxy_set_header Host \$host;
 		proxy_set_header X-Real-IP \$remote_addr;
 		proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-		#proxy_set_header CF-IPCountry \$http_cf_ipcountry;
-		#proxy_set_header CF-IP \$realip_remote_addr;
 		if (\$content_type ~* "GRPC") {
 			grpc_pass grpc://127.0.0.1:\$fwdport\$is_args\$args;
 			break;
@@ -471,6 +444,17 @@ server {
 	if (\$request_uri ~ "(\"|'|\`|~|,|:|--|;|%|\\$|&&|\?\?|0x00|0X00|\||\\|\{|\}|\[|\]|<|>|\.\.\.|\.\.\/|\/\/\/)"){set \$hack 1;}
 	error_page 400 401 402 403 500 501 502 503 504 =404 /404;
 	proxy_intercept_errors on;
+	
+	location /redirect {
+		set \$safe_link \$arg_link;
+		
+		if (\$safe_link !~* "^(happ://|tg://|https://t\\.me/)") {
+			return 403 "Forbidden: only happ://, tg://, and https://t.me/ links are allowed";
+		}
+		
+		return 302 \$safe_link;
+	}
+	
 	#X-UI Admin Panel
 	location /${panel_path}/ {
 		proxy_redirect off;
@@ -1157,66 +1141,42 @@ echo "net.ipv4.tcp_wmem = 4096 65536 16777216" | tee -a /etc/sysctl.conf
 
 sysctl -p
 
+######################install_fake_site (MERGED FROM fakehtml.sh)#######################################
 
-######################install_sub2sing-box#################################################################
+FAKE_TARGET_URL="https://raw.githubusercontent.com/mynameisvyach/install/main/index.html"
+FAKE_DEST_DIR="/var/www/html"
+FAKE_DEST_FILE="$FAKE_DEST_DIR/index.html"
 
-# if pgrep -x "sub2sing-box" > /dev/null; then
-#     echo "kill sub2sing-box..."
-#     pkill -x "sub2sing-box"
-# fi
-# if [ -f "/usr/bin/sub2sing-box" ]; then
-#     echo "delete sub2sing-box..."
-#     rm -f /usr/bin/sub2sing-box
-# fi
-# wget -P /root/ https://github.com/legiz-ru/sub2sing-box/releases/download/v0.0.9/sub2sing-box_0.0.9_linux_amd64.tar.gz
-# tar -xvzf /root/sub2sing-box_0.0.9_linux_amd64.tar.gz -C /root/ --strip-components=1 sub2sing-box_0.0.9_linux_amd64/sub2sing-box
-# mv /root/sub2sing-box /usr/bin/
-# chmod +x /usr/bin/sub2sing-box
-# rm /root/sub2sing-box_0.0.9_linux_amd64.tar.gz
-# su -c "/usr/bin/sub2sing-box server --bind 127.0.0.1 --port 8080 & disown" root
+msg_inf "Starting deployment of the new web page (fake site)..."
 
-######################install_fake_site#################################################################
+# Проверка и создание директории
+if [[ ! -d "$FAKE_DEST_DIR" ]]; then
+    msg_inf "Directory $FAKE_DEST_DIR does not exist. Creating it..."
+    mkdir -p "$FAKE_DEST_DIR"
+    if [[ $? -ne 0 ]]; then
+        msg_err "Failed to create directory $FAKE_DEST_DIR. Please check permissions."
+        exit 1
+    fi
+fi
 
-sudo su -c "bash <(wget -qO- https://raw.githubusercontent.com/mynameisvyach/install/refs/heads/main/fakehtml.sh)"
+# Скачивание нового index.html
+msg_inf "Downloading new web page from $FAKE_TARGET_URL"
+wget -q -O "$FAKE_DEST_FILE" "$FAKE_TARGET_URL"
 
-######################install_web_sub_page##############################################################
+# Проверка успешности скачивания
+if [[ $? -eq 0 && -f "$FAKE_DEST_FILE" ]]; then
+    msg_ok "Web page successfully downloaded and installed to $FAKE_DEST_FILE"
+    chmod 644 "$FAKE_DEST_FILE"
+    msg_ok "Permissions set to 644 for $FAKE_DEST_FILE"
+else
+    msg_err "Failed to download the web page. Please check your internet connection and the URL."
+    exit 1
+fi
 
-# URL_SUB_PAGE=( "https://github.com/legiz-ru/x-ui-pro/raw/master/sub-3x-ui.html"
-# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/sub-3x-ui-classical.html"
-# 	)
-# URL_CLASH_SUB=( "https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash.yaml"
-# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_skrepysh.yaml"
-# 		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_fullproxy_without_ru.yaml"
-#   		"https://github.com/legiz-ru/x-ui-pro/raw/master/clash/clash_refilter_ech.yaml"
-# 	)
-# DEST_DIR_SUB_PAGE="/var/www/subpage"
-# DEST_FILE_SUB_PAGE="$DEST_DIR_SUB_PAGE/index.html"
-# DEST_FILE_CLASH_SUB="$DEST_DIR_SUB_PAGE/clash.yaml"
-
-# sudo mkdir -p "$DEST_DIR_SUB_PAGE"
-
-# sudo curl -L "${URL_CLASH_SUB[$CLASH]}" -o "$DEST_FILE_CLASH_SUB"
-# sudo curl -L "${URL_SUB_PAGE[$CUSTOMWEBSUB]}" -o "$DEST_FILE_SUB_PAGE"
-
-# sed -i "s/\${DOMAIN}/$domain/g" "$DEST_FILE_SUB_PAGE"
-# sed -i "s/\${DOMAIN}/$domain/g" "$DEST_FILE_CLASH_SUB"
-# sed -i "s#\${SUB_JSON_PATH}#$json_path#g" "$DEST_FILE_SUB_PAGE"
-# sed -i "s#\${SUB_PATH}#$sub_path#g" "$DEST_FILE_SUB_PAGE"
-# sed -i "s#\${SUB_PATH}#$sub_path#g" "$DEST_FILE_CLASH_SUB"
-# sed -i "s|sub.legiz.ru|$domain/$sub2singbox_path|g" "$DEST_FILE_SUB_PAGE"
-
-#while true; do	
-#	if [[ -n "$tg_escaped_link" ]]; then
-#		break
-#	fi
-#	echo -en "Enter your support link for web sub page (example https://t.me/durov/ ): " && read tg_escaped_link
-#done
-
-#sed -i -e "s|https://t.me/gozargah_marzban|$tg_escaped_link|g" -e "s|https://github.com/Gozargah/Marzban#donation|$tg_escaped_link|g" "$DEST_FILE_SUB_PAGE"
+msg_ok "Fake site deployment complete!"
 
 ######################cronjob for ssl/reload service/cloudflareips######################################
 crontab -l | grep -v "certbot\|x-ui\|cloudflareips" | crontab -
-# (crontab -l 2>/dev/null; echo '@reboot /usr/bin/sub2sing-box server --bind 127.0.0.1 --port 8080 > /dev/null 2>&1') | crontab -
 (crontab -l 2>/dev/null; echo '@daily x-ui restart > /dev/null 2>&1 && nginx -s reload;') | crontab -
 (crontab -l 2>/dev/null; echo '@monthly certbot renew --nginx --non-interactive --post-hook "nginx -s reload" > /dev/null 2>&1;') | crontab -
 ##################################ufw###################################################################
@@ -1240,8 +1200,10 @@ if systemctl is-active --quiet x-ui; then clear
 	echo -e "Password:  ${config_password} \n" 
 	msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
     msg_inf "Web Sub Page your first client: https://${domain}/${web_path}?name=first\n"
-    msg_inf "Your local sub2sing-box instance: https://${domain}/$sub2singbox_path/\n"
-  msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+    msg_inf "Safe Redirect Endpoint: https://${domain}/redirect?link=YOUR_LINK"
+    msg_inf "Allowed links: happ://, tg://, https://t.me/"
+    msg_inf "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+    msg_inf "All clients see REAL IP addresses (PROXY protocol is properly configured)"
 	msg_inf "Please Save this Screen!!"	
 else
 	nginx -t && printf '0\n' | x-ui | grep --color=never -i ':'
