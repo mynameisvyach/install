@@ -25,7 +25,9 @@ LANG_PROVIDED=0
 
 ACTION="install"
 TARGET_VERSION="${VERSION:-latest}"
-LANG_CHOICE="en"
+LANG_CHOICE="ru"
+
+PATH="${PATH}:/usr/sbin:/sbin"
 
 set_language() {
     case "$1" in
@@ -82,26 +84,29 @@ set_language() {
             L_INFO_KEEP_CONF="Примечание: Конфигурация сохранена. Используйте 'purge' для очистки."
             L_INFO_I_START="Начинается установка"
             L_I_STAGE_1=">>> Этап 1: Проверка окружения и зависимостей"
-            L_I_STAGE_1_5=">>> Этап 1.5: Интерактивная настройка"
+            L_I_STAGE_2=">>> Этап 2: Интерактивная настройка"
             L_I_PROMPT_DOM="\nПожалуйста, укажите домен TLS\nНажмите Enter, чтобы оставить по умолчанию [%s]: "
+            L_I_PROMPT_PORT="\nПожалуйста, укажите порт сервера\nНажмите Enter, чтобы оставить по умолчанию [%s]: "
             L_WARN_NO_TTY="Интерактивный режим недоступен (нет TTY). Используется:"
-            L_I_STAGE_2=">>> Этап 2: Загрузка архива"
+            L_I_STAGE_3=">>> Этап 3: Загрузка архива"
             L_ERR_TMP_DIR="Не удалось создать временную директорию"
             L_ERR_TMP_INV="Временная директория недействительна"
             L_INFO_FALLBACK="Сборка x86_64-v3 не найдена, откат к стандартной x86_64..."
             L_ERR_DL_FAIL="Ошибка загрузки архива"
-            L_I_STAGE_3=">>> Этап 3: Распаковка архива"
+            L_I_STAGE_4=">>> Этап 4: Распаковка архива"
             L_ERR_EXTRACT="Ошибка распаковки архива."
             L_ERR_BIN_NOT_FOUND="Бинарный файл не найден в архиве"
-            L_I_STAGE_4=">>> Этап 4: Настройка окружения (Юзер, Группа, Папки)"
-            L_I_STAGE_5=">>> Этап 5: Установка бинарного файла"
-            L_I_STAGE_6=">>> Этап 6: Генерация/Обновление конфигурации"
-            L_I_STAGE_7=">>> Этап 7: Установка и запуск службы"
+            L_I_STAGE_5=">>> Этап 5: Настройка окружения (Юзер, Группа, Папки)"
+            L_I_STAGE_6=">>> Этап 6: Установка бинарного файла"
+            L_I_STAGE_7=">>> Этап 7: Генерация/Обновление конфигурации"
+            L_I_STAGE_8=">>> Этап 8: Установка и запуск службы"
             L_OUT_WARN_H="УСТАНОВКА ЗАВЕРШЕНА С ПРЕДУПРЕЖДЕНИЯМИ"
             L_OUT_WARN_D="Служба установлена, но не запустилась.\nПожалуйста, проверьте логи.\n"
             L_OUT_SUCC_H="УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА"
             L_OUT_UNINST_H="УДАЛЕНИЕ ЗАВЕРШЕНО"
             L_OUT_LINK="Ваша ссылка для подключения к Telegram Proxy:\n"
+            L_ERR_INCORR_ROOT_LOGIN="Используйте 'su -' или 'sudo -i' для входа под пользователем root"
+            L_OUT_LOGS="Чтобы посмотреть логи (в случае проблем), используйте команду:"
             ;;
         *)
             L_ERR_DOMAIN_REQ="requires a domain argument."
@@ -156,26 +161,29 @@ set_language() {
             L_INFO_KEEP_CONF="Note: Configuration kept. Run with 'purge' to remove completely."
             L_INFO_I_START="Starting installation of"
             L_I_STAGE_1=">>> Stage 1: Verifying environment and dependencies"
-            L_I_STAGE_1_5=">>> Stage 1.5: Interactive Setup"
+            L_I_STAGE_2=">>> Stage 2: Interactive Setup"
             L_I_PROMPT_DOM="\nPlease specify the TLS Domain\nPress Enter to keep default [%s]: "
+            L_I_PROMPT_PORT="\nPlease specify the Server Port\nPress Enter to keep default [%s]: "
             L_WARN_NO_TTY="Interactive mode unavailable (no TTY). Using:"
-            L_I_STAGE_2=">>> Stage 2: Downloading archive"
+            L_I_STAGE_3=">>> Stage 3: Downloading archive"
             L_ERR_TMP_DIR="Temp directory creation failed"
             L_ERR_TMP_INV="Temp directory is invalid or was not created"
             L_INFO_FALLBACK="x86_64-v3 build not found, falling back to standard x86_64..."
             L_ERR_DL_FAIL="Download failed"
-            L_I_STAGE_3=">>> Stage 3: Extracting archive"
+            L_I_STAGE_4=">>> Stage 4: Extracting archive"
             L_ERR_EXTRACT="Extraction failed."
             L_ERR_BIN_NOT_FOUND="Binary not found in archive"
-            L_I_STAGE_4=">>> Stage 4: Setting up environment (User, Group, Directories)"
-            L_I_STAGE_5=">>> Stage 5: Installing binary"
-            L_I_STAGE_6=">>> Stage 6: Generating/Updating configuration"
-            L_I_STAGE_7=">>> Stage 7: Installing and starting service"
+            L_I_STAGE_5=">>> Stage 5: Setting up environment (User, Group, Directories)"
+            L_I_STAGE_6=">>> Stage 6: Installing binary"
+            L_I_STAGE_7=">>> Stage 7: Generating/Updating configuration"
+            L_I_STAGE_8=">>> Stage 8: Installing and starting service"
             L_OUT_WARN_H="INSTALLATION COMPLETED WITH WARNINGS"
             L_OUT_WARN_D="The service was installed but failed to start.\nPlease check the logs to determine the issue.\n"
             L_OUT_SUCC_H="INSTALLATION SUCCESS"
             L_OUT_UNINST_H="UNINSTALLATION COMPLETE"
             L_OUT_LINK="Your Telegram Proxy connection link:\n"
+            L_ERR_INCORR_ROOT_LOGIN="Use 'su -' or 'sudo -i' to login under root"
+            L_OUT_LOGS="To view logs (in case of issues), use the following command:"
             ;;
     esac
 }
@@ -263,7 +271,10 @@ say() {
     if [ "$#" -eq 0 ] || [ -z "${1:-}" ]; then
         printf '\n'
     else
-        printf '[INFO] %s\n' "$*"
+        case "$*" in
+            \[*\]*) printf '%s\n' "$*" ;;
+            *) printf '[INFO] %s\n' "$*" ;;
+        esac
     fi
 }
 die() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
@@ -388,6 +399,9 @@ verify_common() {
 
     if [ "$(id -u)" -eq 0 ]; then
         SUDO=""
+        if [ "${USER:-}" != "root" ] && [ "${LOGNAME:-}" != "root" ]; then
+            die "$L_ERR_INCORR_ROOT_LOGIN"
+        fi
     else
         command -v sudo >/dev/null 2>&1 || die "$L_ERR_ROOT"
         SUDO="sudo"
@@ -518,9 +532,9 @@ setup_dirs() {
 
 stop_service() {
     svc="$(get_svc_mgr)"
-    if [ "$svc" = "systemd" ] && systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    if [ "$svc" = "systemd" ] && $SUDO systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
         $SUDO systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-    elif [ "$svc" = "openrc" ] && rc-service "$SERVICE_NAME" status >/dev/null 2>&1; then
+    elif [ "$svc" = "openrc" ] && $SUDO rc-service "$SERVICE_NAME" status >/dev/null 2>&1; then
         $SUDO rc-service "$SERVICE_NAME" stop 2>/dev/null || true
     fi
 }
@@ -532,7 +546,7 @@ install_binary() {
     fi
 
     $SUDO mkdir -p "$INSTALL_DIR" || die "$L_ERR_MKDIR"
-    
+
     $SUDO rm -f "$bin_dst" 2>/dev/null || true
 
     if command -v install >/dev/null 2>&1; then
@@ -602,33 +616,33 @@ install_config() {
 
         tmp_conf="${TEMP_DIR}/config.tmp"
         $SUDO cat "$CONFIG_FILE" > "$tmp_conf"
-        
+
         escaped_domain="$(printf '%s\n' "$TLS_DOMAIN" | tr -d '[:cntrl:]' | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
         awk -v port="$SERVER_PORT" -v secret="$USER_SECRET" -v domain="$escaped_domain" -v ad_tag="$AD_TAG" \
             -v flag_p="$PORT_PROVIDED" -v flag_s="$SECRET_PROVIDED" -v flag_d="$DOMAIN_PROVIDED" -v flag_a="$AD_TAG_PROVIDED" '
         BEGIN { ad_tag_handled = 0 }
-        
+
         flag_p == "1" && /^[ \t]*port[ \t]*=/ { print "port = " port; next }
         flag_s == "1" && /^[ \t]*hello[ \t]*=/ { print "hello = \"" secret "\""; next }
         flag_d == "1" && /^[ \t]*tls_domain[ \t]*=/ { print "tls_domain = \"" domain "\""; next }
-        
-        flag_a == "1" && /^[ \t]*ad_tag[ \t]*=/ { 
-            if (!ad_tag_handled) { 
-                print "ad_tag = \"" ad_tag "\""; 
-                ad_tag_handled = 1; 
-            } 
-            next 
+
+        flag_a == "1" && /^[ \t]*ad_tag[ \t]*=/ {
+            if (!ad_tag_handled) {
+                print "ad_tag = \"" ad_tag "\"";
+                ad_tag_handled = 1;
+            }
+            next
         }
-        flag_a == "1" && /^\[general\]/ { 
-            print; 
-            if (!ad_tag_handled) { 
-                print "ad_tag = \"" ad_tag "\""; 
-                ad_tag_handled = 1; 
-            } 
-            next 
+        flag_a == "1" && /^\[general\]/ {
+            print;
+            if (!ad_tag_handled) {
+                print "ad_tag = \"" ad_tag "\"";
+                ad_tag_handled = 1;
+            }
+            next
         }
-        
+
         { print }
         ' "$tmp_conf" > "${tmp_conf}.new" && mv "${tmp_conf}.new" "$tmp_conf"
 
@@ -778,11 +792,11 @@ uninstall() {
         say "$L_U_STAGE_5"
         $SUDO rm -rf "$CONFIG_DIR" "$WORK_DIR"
         $SUDO rm -f "$CONFIG_FILE"
-        
+
         if check_os_entity passwd telemt; then
             $SUDO userdel telemt 2>/dev/null || $SUDO deluser telemt 2>/dev/null || true
         fi
-        
+
         if check_os_entity group telemt; then
             $SUDO groupdel telemt 2>/dev/null || $SUDO delgroup telemt 2>/dev/null || true
         fi
@@ -823,10 +837,36 @@ case "$ACTION" in
             fi
         fi
 
-        check_port_availability
+        if [ "$PORT_PROVIDED" -eq 0 ] || [ "$DOMAIN_PROVIDED" -eq 0 ]; then
+            say "$L_I_STAGE_2"
+        fi
+
+        if [ "$PORT_PROVIDED" -eq 0 ]; then
+            if [ -t 0 ] || [ -c /dev/tty ]; then
+                while true; do
+                    printf "$L_I_PROMPT_PORT" "$SERVER_PORT"
+                    read -r input_port </dev/tty || input_port=""
+                    if [ -z "$input_port" ]; then
+                        break
+                    fi
+                    case "$input_port" in
+                        *[!0-9]*) printf '[ERROR] %s\n' "$L_ERR_PORT_NUM" >&2; continue ;;
+                    esac
+                    port_num="$(printf '%s\n' "$input_port" | sed 's/^0*//')"
+                    [ -z "$port_num" ] && port_num="0"
+                    if [ "${#port_num}" -gt 5 ] || [ "$port_num" -lt 1 ] || [ "$port_num" -gt 65535 ]; then
+                        printf '[ERROR] %s\n' "$L_ERR_PORT_RANGE" >&2; continue
+                    fi
+                    SERVER_PORT="$port_num"
+                    break
+                done
+            else
+                say "[WARNING] $L_WARN_NO_TTY $SERVER_PORT"
+            fi
+            PORT_PROVIDED=1
+        fi
 
         if [ "$DOMAIN_PROVIDED" -eq 0 ]; then
-            say "$L_I_STAGE_1_5"
             if [ -t 0 ] || [ -c /dev/tty ]; then
                 printf "$L_I_PROMPT_DOM" "$TLS_DOMAIN"
                 read -r input_domain </dev/tty || input_domain=""
@@ -838,6 +878,8 @@ case "$ACTION" in
             fi
             DOMAIN_PROVIDED=1
         fi
+
+        check_port_availability
 
         if [ "$TARGET_VERSION" != "latest" ]; then
             TARGET_VERSION="${TARGET_VERSION#v}"
@@ -852,7 +894,7 @@ case "$ACTION" in
             DL_URL="https://github.com/${REPO}/releases/download/${TARGET_VERSION}/${FILE_NAME}"
         fi
 
-        say "$L_I_STAGE_2"
+        say "$L_I_STAGE_3"
         TEMP_DIR="$(mktemp -d)" || die "$L_ERR_TMP_DIR"
         if [ -z "$TEMP_DIR" ] || [ ! -d "$TEMP_DIR" ]; then
             die "$L_ERR_TMP_INV"
@@ -874,7 +916,7 @@ case "$ACTION" in
             fi
         fi
 
-        say "$L_I_STAGE_3"
+        say "$L_I_STAGE_4"
         if ! gzip -dc "${TEMP_DIR}/${FILE_NAME}" | tar -xf - -C "$TEMP_DIR" 2>/dev/null; then
             die "$L_ERR_EXTRACT"
         fi
@@ -882,16 +924,16 @@ case "$ACTION" in
         EXTRACTED_BIN="$(find "$TEMP_DIR" -type f -name "$BIN_NAME" -print 2>/dev/null | head -n 1 || true)"
         [ -n "$EXTRACTED_BIN" ] || die "$L_ERR_BIN_NOT_FOUND"
 
-        say "$L_I_STAGE_4"
+        say "$L_I_STAGE_5"
         ensure_user_group; setup_dirs; stop_service
 
-        say "$L_I_STAGE_5"
+        say "$L_I_STAGE_6"
         install_binary "$EXTRACTED_BIN" "${INSTALL_DIR}/${BIN_NAME}"
 
-        say "$L_I_STAGE_6"
+        say "$L_I_STAGE_7"
         install_config
 
-        say "$L_I_STAGE_7"
+        say "$L_I_STAGE_8"
         install_service
 
         if [ "${SERVICE_START_FAILED:-0}" -eq 1 ]; then
@@ -909,7 +951,7 @@ case "$ACTION" in
         if command -v curl >/dev/null 2>&1; then SERVER_IP="$(curl -s4 -m 3 ifconfig.me 2>/dev/null || curl -s4 -m 3 api.ipify.org 2>/dev/null || true)"
         elif command -v wget >/dev/null 2>&1; then SERVER_IP="$(wget -qO- -T 3 ifconfig.me 2>/dev/null || wget -qO- -T 3 api.ipify.org 2>/dev/null || true)"; fi
         [ -z "$SERVER_IP" ] && SERVER_IP="<YOUR_SERVER_IP>"
-        
+
         if command -v xxd >/dev/null 2>&1; then HEX_DOMAIN="$(printf '%s' "$TLS_DOMAIN" | xxd -p | tr -d '\n')"
         elif command -v hexdump >/dev/null 2>&1; then HEX_DOMAIN="$(printf '%s' "$TLS_DOMAIN" | hexdump -v -e '/1 "%02x"')"
         elif command -v od >/dev/null 2>&1; then HEX_DOMAIN="$(printf '%s' "$TLS_DOMAIN" | od -A n -t x1 | tr -d ' \n')"
@@ -919,6 +961,15 @@ case "$ACTION" in
 
         printf '%b\n' "$L_OUT_LINK"
         printf '  tg://proxy?server=%s&port=%s&secret=%s\n\n' "$SERVER_IP" "$SERVER_PORT" "$CLIENT_SECRET"
+
+        svc="$(get_svc_mgr)"
+        if [ "$svc" = "systemd" ]; then
+            printf '%s\n' "$L_OUT_LOGS"
+            printf '  sudo journalctl -u %s -f\n\n' "$SERVICE_NAME"
+        elif [ "$svc" = "openrc" ]; then
+            printf '%s\n' "$L_OUT_LOGS"
+            printf '  sudo tail -f /var/log/messages /var/log/syslog 2>/dev/null | grep -i %s\n\n' "$SERVICE_NAME"
+        fi
 
         printf '====================================================================\n'
         ;;
