@@ -8,6 +8,7 @@ aiosqlite==0.22.1
 aiogram==3.25.0
 
 pdfplumber
+pytz
 num2words
 python-docx
 docxtpl
