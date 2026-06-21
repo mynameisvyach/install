@@ -476,20 +476,6 @@ sed -i 's/sendReply : 0/sendReply : 1/' configs/_main.cfg
 # Замена replyText
 sed -i '/replyText : /c\replyText : ❤️ $username, спасибо за подтверждение заказа $order_id!\n\t💞 Буду благодарен вашему отзыву. Как оставить отзыв !инструкция 💖' configs/_main.cfg
 
-# Обновление star1-5Reply : 0 -> 1
-sed -i 's/star1Reply : 0/star1Reply : 1/' configs/_main.cfg
-sed -i 's/star2Reply : 0/star2Reply : 1/' configs/_main.cfg
-sed -i 's/star3Reply : 0/star3Reply : 1/' configs/_main.cfg
-sed -i 's/star4Reply : 0/star4Reply : 1/' configs/_main.cfg
-sed -i 's/star5Reply : 0/star5Reply : 1/' configs/_main.cfg
-
-# Замена текстов ответов на отзывы
-sed -i '/star1ReplyText : /c\star1ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис для вас. Заказ оценен $date в $full_time.' configs/_main.cfg
-sed -i '/star2ReplyText : /c\star2ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис для вас. Заказ оценен $date в $full_time.' configs/_main.cfg
-sed -i '/star3ReplyText : /c\star3ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис для вас. Заказ оценен $date в $full_time.' configs/_main.cfg
-sed -i '/star4ReplyText : /c\star4ReplyText : 🤖Спасибо за покупку! Заказ оценен $date в $full_time.' configs/_main.cfg
-sed -i '/star5ReplyText : /c\star5ReplyText : 🤖Спасибо за покупку! Заказ оценен $date в $full_time.' configs/_main.cfg
-
 # watermark : 🐦 -> (пусто) в секции Other
 sed -i '/\[Other\]/,/^\[/ s/watermark : 🐦/watermark : /' configs/_main.cfg
 
