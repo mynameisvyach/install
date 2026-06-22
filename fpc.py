@@ -461,12 +461,6 @@ sed -i 's/autoResponse : 0/autoResponse : 1/' configs/_main.cfg
 # ignoreSystemMessages : 0 -> 1
 sed -i 's/ignoreSystemMessages : 0/ignoreSystemMessages : 1/' configs/_main.cfg
 
-# sendGreetings : 0 -> 1
-sed -i 's/sendGreetings : 0/sendGreetings : 1/' configs/_main.cfg
-
-# Замена greetingsText (многострочный)
-sed -i '/greetingsText : /c\greetingsText : 🤖 𝙧𝙮𝙥𝙧𝙤𝙙𝙪𝙘𝙩𝙨 𝙗𝙤𝙩 🤖 Позвать продавца - команда !help.\n\t👋 Здравствуйте, $username. Скоро отвечу вам!\n\t━━━━━━━━━━━━━━━━━━━━━━' configs/_main.cfg
-
 # watermark : 1 -> 0 (в секции OrderConfirm)
 sed -i '/\[OrderConfirm\]/,/\[/ s/watermark : 1/watermark : 0/' configs/_main.cfg
 
