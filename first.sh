@@ -19,15 +19,15 @@ echo -e "${YELLOW}Установка net-tools...${NC}"
 sudo apt install net-tools -y
 
 # Установка Docker
-echo -e "${YELLOW}[2/10] Установка Docker...${NC}"
-sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install docker-ce -y
-sudo systemctl enable docker --now
-sudo usermod -aG docker $USER
-echo -e "${GREEN}Docker установлен успешно!${NC}"
+# echo -e "${YELLOW}[2/10] Установка Docker...${NC}"
+# sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+# echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+# sudo apt update
+# sudo apt install docker-ce -y
+# sudo systemctl enable docker --now
+# sudo usermod -aG docker $USER
+# echo -e "${GREEN}Docker установлен успешно!${NC}"
 
 # Установка Python
 echo -e "${YELLOW}[3/10] Установка Python и venv...${NC}"
@@ -104,7 +104,7 @@ sudo systemctl daemon-reload
 echo -e "${GREEN}systemd перезагружен${NC}"
 
 # Список ботов
-BOTS=("actsbot" "eventsbot" "starsbot" "informatorbot")
+BOTS=("actsbot" "eventsbot" "managerbots" "informatorbot")
 
 # Запуск каждого бота
 for bot in "${BOTS[@]}"; do
@@ -146,31 +146,31 @@ sudo systemctl restart ssh
 echo -e "${GREEN}SSH настроен!${NC}"
 
 # Установка Fail2Ban
-echo -e "${YELLOW}[10/10] Установка Fail2Ban...${NC}"
-sudo apt install fail2ban -y
-sudo systemctl enable fail2ban --now
-echo -e "${GREEN}Fail2Ban установлен и запущен!${NC}"
-sudo systemctl status fail2ban --no-pager
+# echo -e "${YELLOW}[10/10] Установка Fail2Ban...${NC}"
+# sudo apt install fail2ban -y
+# sudo systemctl enable fail2ban --now
+# echo -e "${GREEN}Fail2Ban установлен и запущен!${NC}"
+# sudo systemctl status fail2ban --no-pager
 
 # Настройка Fail2Ban (опционально)
-echo -e "${YELLOW}Настройка Fail2Ban...${NC}"
+# echo -e "${YELLOW}Настройка Fail2Ban...${NC}"
 
 # Небольшая задержка, чтобы fail2ban полностью инициализировался
-sleep 2
+# sleep 2
 
-read -p "Хотите добавить IP в ignorelist Fail2Ban? (yes/no): " add_ip
-if [[ $add_ip == "yes" || $add_ip == "YES" || $add_ip == "y" ]]; then
-    read -p "Введите IP адрес для добавления в ignorelist: " ip_address
-    sudo fail2ban-client set sshd addignoreip $ip_address
-    echo -e "${GREEN}IP $ip_address добавлен в ignorelist для тюрьмы sshd${NC}"
-fi
+# read -p "Хотите добавить IP в ignorelist Fail2Ban? (yes/no): " add_ip
+# if [[ $add_ip == "yes" || $add_ip == "YES" || $add_ip == "y" ]]; then
+#     read -p "Введите IP адрес для добавления в ignorelist: " ip_address
+#     sudo fail2ban-client set sshd addignoreip $ip_address
+#     echo -e "${GREEN}IP $ip_address добавлен в ignorelist для тюрьмы sshd${NC}"
+# fi
 
-read -p "Хотите разбанить какой-либо IP? (yes/no): " unban_ip
-if [[ $unban_ip == "yes" || $unban_ip == "YES" || $unban_ip == "y" ]]; then
-    read -p "Введите IP адрес для разбана: " ip_to_unban
-    sudo fail2ban-client set sshd unbanip $ip_to_unban
-    echo -e "${GREEN}IP $ip_to_unban разбанен в тюрьме sshd${NC}"
-fi
+# read -p "Хотите разбанить какой-либо IP? (yes/no): " unban_ip
+# if [[ $unban_ip == "yes" || $unban_ip == "YES" || $unban_ip == "y" ]]; then
+#     read -p "Введите IP адрес для разбана: " ip_to_unban
+#     sudo fail2ban-client set sshd unbanip $ip_to_unban
+#     echo -e "${GREEN}IP $ip_to_unban разбанен в тюрьме sshd${NC}"
+# fi
 
 # Итоговая информация
 echo -e "${GREEN}========================================${NC}"
