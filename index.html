@@ -2,182 +2,242 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>soon...</title>
-
-  <!-- Favicon: точная копия логотипа VY со страницы -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100'%3E%3Ctext x='50%25' y='70' font-family='Brush Script MT, cursive' font-size='80' fill='%23e6f0ff' font-weight='bold' text-anchor='middle' style='letter-spacing:-5px;'%3EVY%3C/text%3E%3C/svg%3E">
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>PFI Panel · Вход</title>
   <style>
-    body {
+    * {
       margin: 0;
-      font-family: 'Space Grotesk', sans-serif;
-      background: linear-gradient(270deg, #0a0f1c, #1a2a3a, #0a0f1c);
-      background-size: 600% 600%;
-      animation: gradientMove 20s ease-in-out infinite;
-      color: white;
-      overflow: hidden;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    @keyframes gradientMove {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    .container {
+    body {
+      background: #0b0f15;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1.5rem;
+      color: #e3e7ec;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(18, 22, 28, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 2rem;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(74, 144, 226, 0.15) inset;
+      text-align: center;
+    }
+
+    .pfi-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .pfi-icon {
+      font-size: 2.2rem;
+      filter: drop-shadow(0 0 8px #2f80ed);
+    }
+
+    .pfi-title {
+      font-weight: 700;
+      font-size: 2.2rem;
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, #a0c4ff, #6c9cff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-transform: uppercase;
+    }
+
+    .sub-header {
+      font-size: 0.9rem;
+      color: #8a8f9a;
+      margin-bottom: 2.2rem;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+      padding-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+    }
+
+    .sub-header span {
+      background: #1e2530;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #b0c6ff;
+    }
+
+    .input-group {
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8892a4;
+      margin-bottom: 0.4rem;
+      margin-left: 0.4rem;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #141a23;
+      border: 1px solid #2d3542;
+      border-radius: 14px;
+      padding: 0.9rem 1.2rem;
+      font-size: 1rem;
+      color: #f0f3fa;
+      outline: none;
+      transition: all 0.2s ease;
+      background: #0f131c;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .input-field:focus {
+      border-color: #3b6cb7;
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.25), inset 0 1px 4px rgba(0,0,0,0.5);
+    }
+
+    .input-field::placeholder {
+      color: #4b5260;
+      font-weight: 400;
+    }
+
+    .remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 1.8rem 0 2rem;
+      font-size: 0.85rem;
+      color: #9aa1af;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
+    .checkbox-container input {
+      accent-color: #2f80ed;
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .forgot-link {
+      color: #7b93c7;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .forgot-link:hover {
+      color: #aac8ff;
+      text-decoration: underline;
+    }
+
+    .login-btn {
+      width: 100%;
+      background: #1e3a6b;
+      border: none;
+      border-radius: 14px;
+      padding: 0.9rem;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+      color: #eef3ff;
+      background: linear-gradient(145deg, #1f4477, #102a4e);
+      box-shadow: 0 8px 18px rgba(0, 80, 200, 0.3);
+      border: 1px solid rgba(74, 144, 226, 0.5);
+      cursor: pointer;
+      transition: all 0.25s;
+      text-transform: uppercase;
+    }
+
+    .login-btn:hover {
+      background: linear-gradient(145deg, #25508a, #14305a);
+      box-shadow: 0 10px 22px rgba(0, 112, 243, 0.45);
+      border-color: rgba(120, 170, 255, 0.7);
+      transform: translateY(-1px);
+    }
+
+    .footer-note {
+      margin-top: 2rem;
+      font-size: 0.7rem;
+      color: #5b6370;
+      display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      text-align: center;
-      position: relative;
-      z-index: 2;
+      gap: 0.3rem;
     }
 
-    /* Стиль для текста "SOON...." */
-    .soon-text {
-      font-family: 'Space Grotesk', sans-serif;
-      font-weight: 700;
-      font-size: clamp(3.5rem, 14vw, 7rem);
-      letter-spacing: 0.12em;
-      background: linear-gradient(135deg, #ffffff, #a0c4ff);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      animation: textGlow 3s ease-in-out infinite;
-    }
-
-    @keyframes textGlow {
-      0%, 100% {
-        opacity: 0.9;
-        filter: drop-shadow(0 0 5px rgba(77, 163, 255, 0.3));
-      }
-      50% {
-        opacity: 1;
-        filter: drop-shadow(0 0 15px rgba(77, 163, 255, 0.6));
-      }
-    }
-
-    footer {
-      position: absolute;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-      font-size: 14px;
-      font-weight: 400;
-      letter-spacing: 0.5px;
-      color: #888;
-      font-family: 'Space Grotesk', sans-serif;
-      z-index: 2;
-      animation: fadePulse 6s ease-in-out infinite;
-    }
-
-    @keyframes fadePulse {
-      0%,100% { opacity: 0.4; }
-      50% { opacity: 0.9; }
-    }
-
-    /* SVG CHAOTIC LINES */
-    .bg-svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    .path {
-      fill: none;
-      stroke: #4da3ff;
-      stroke-width: 1.2;
-      opacity: 0.2;
-      stroke-dasharray: 400;
-      stroke-dashoffset: 400;
-      animation: smoothDraw 12s ease-in-out infinite alternate;
-    }
-
-    @keyframes smoothDraw {
-      0% {
-        stroke-dashoffset: 400;
-        opacity: 0.05;
-      }
-      25% {
-        opacity: 0.25;
-      }
-      50% {
-        stroke-dashoffset: 0;
-        opacity: 0.3;
-      }
-      75% {
-        opacity: 0.25;
-      }
-      100% {
-        stroke-dashoffset: 400;
-        opacity: 0.05;
-      }
-    }
-
-    .path-1 {
-      animation-duration: 14s;
-      animation-delay: 0s;
-    }
-    .path-2 {
-      animation-duration: 18s;
-      animation-delay: 2s;
-    }
-    .path-3 {
-      animation-duration: 16s;
-      animation-delay: 5s;
-    }
-    .path-4 {
-      animation-duration: 20s;
-      animation-delay: 1s;
-    }
-    .path-5 {
-      animation-duration: 22s;
-      animation-delay: 7s;
-    }
-    .path-6 {
-      animation-duration: 15s;
-      animation-delay: 3s;
-    }
-
-    @media (max-width: 600px) {
-      footer {
-        font-size: 10px;
-        bottom: 15px;
-      }
-      .path {
-        stroke-width: 0.8;
-      }
+    .dot {
+      width: 6px;
+      height: 6px;
+      background: #2f80ed;
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 4px;
+      box-shadow: 0 0 8px #2f80ed;
     }
   </style>
 </head>
 <body>
+  <div class="login-card">
+    <div class="pfi-badge">
+      <span class="pfi-icon">🌐</span>
+      <h1 class="pfi-title">PFI</h1>
+    </div>
+    <div class="sub-header">
+      <span>⚡ PFI Control Panel</span>
+    </div>
 
-<svg class="bg-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-  <path class="path path-1" d="M0,200 C200,300 300,100 500,200 S800,300 1000,200" />
-  <path class="path path-2" d="M0,600 C200,500 400,700 600,600 S900,500 1000,600" />
-  <path class="path path-3" d="M0,400 C150,450 350,350 550,400 S850,450 1000,400" />
-  <path class="path path-4" d="M0,800 C250,750 450,850 700,800 S950,750 1000,800" />
-  <path class="path path-5" d="M100,900 C300,850 500,950 700,900 S900,850 1000,900" />
-  <path class="path path-6" d="M0,100 C150,50 350,150 550,100 S850,50 1000,100" />
-</svg>
+    <!-- Форма без реального действия, заглушка -->
+    <form onsubmit="event.preventDefault(); alert('PFI: это статическая заглушка. Вход не выполняется.');">
+      <div class="input-group">
+        <label class="input-label" for="username">Логин или email</label>
+        <input type="text" id="username" class="input-field" placeholder="admin@pfi.node" autocomplete="off" inputmode="email">
+      </div>
+      <div class="input-group">
+        <label class="input-label" for="password">Пароль</label>
+        <input type="password" id="password" class="input-field" placeholder="········" autocomplete="off">
+      </div>
 
-<div class="container">
-  <div class="soon-text">SOON....</div>
-</div>
+      <div class="remember-row">
+        <label class="checkbox-container">
+          <input type="checkbox" checked>
+          <span>Запомнить сессию</span>
+        </label>
+        <a href="#" class="forgot-link" onclick="event.preventDefault(); alert('Восстановление доступа недоступно (заглушка).');">Забыли пароль?</a>
+      </div>
 
-<footer>
-  © 2026 Revival Corp — Все права защищены
-</footer>
+      <button type="submit" class="login-btn">Войти в панель</button>
+    </form>
 
+    <div class="footer-note">
+      <span class="dot"></span> PFI v2.4.1 · статус: online <span class="dot"></span>
+    </div>
+  </div>
 </body>
 </html>
