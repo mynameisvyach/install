@@ -419,65 +419,25 @@ EOF
 EOF
     echo -e "${GREEN}✓ tg_authorized_users.json создан${NC}"
     
-    echo -e "${GREEN}[8/11] Создание configs/auto_response.cfg...${NC}"
     mkdir -p configs
-    cat > configs/auto_response.cfg << 'EOF'
-    [!инструкция]
-    response : Инструкция для отправки отзыва:
-        1) Открываете раздел 'Покупки' или переходите по ссылке https://funpay.com/orders/;
-        2) Нажимаете на заказ;
-        3) Внизу ставите оценку по 5-бальной системе и добавляете комментарий.
-    telegramNotification : 0
-    
-    [!help]
-    response : ✅ Продавец вызван, ожидайте.
-    telegramNotification : 1
-    notificationText : Пользователь $username позвал Вас!
-EOF
-    echo -e "${GREEN}✓ auto_response.cfg создан${NC}"
 
     echo -e "${GREEN}[9/11] Обновление configs/_main.cfg...${NC}"
     
     # autoRaise : 0 -> 1
     sed -i 's/autoRaise : 0/autoRaise : 1/' configs/_main.cfg
-    
-    # autoResponse : 0 -> 1
-    sed -i 's/autoResponse : 0/autoResponse : 1/' configs/_main.cfg
+
+    sed -i 's/includeMyMessages : 0/includeMyMessages : 1/' configs/_main.cfg
+
+    sed -i 's/includeFPMessages : 0/includeFPMessages : 1/' configs/_main.cfg
+
+    sed -i 's/showImageName : 0/showImageName : 1/' configs/_main.cfg
     
     # ignoreSystemMessages : 0 -> 1
     sed -i 's/ignoreSystemMessages : 0/ignoreSystemMessages : 1/' configs/_main.cfg
     
     # watermark : 1 -> 0 (в секции OrderConfirm)
     sed -i '/\[OrderConfirm\]/,/\[/ s/watermark : 1/watermark : 0/' configs/_main.cfg
-    
-    # sendReply : 0 -> 1
-    sed -i 's/sendReply : 0/sendReply : 1/' configs/_main.cfg
-    
-    # Замена replyText (с экранированием)
-    sed -i 's/replyText : .*/replyText : ❤️ \$username, спасибо за подтверждение заказа \$order_id!\\n\\t💞 Буду благодарен вашему отзыву. Как оставить отзыв !инструкция 💖/' configs/_main.cfg
-    
-    # Замена star1Reply : 0 -> star1Reply : 1
-    sed -i 's/star1Reply : 0/star1Reply : 1/' configs/_main.cfg
-    
-    # Замена star2Reply : 0 -> star2Reply : 1
-    sed -i 's/star2Reply : 0/star2Reply : 1/' configs/_main.cfg
-    
-    # Замена star3Reply : 0 -> star3Reply : 1
-    sed -i 's/star3Reply : 0/star3Reply : 1/' configs/_main.cfg
-    
-    # Замена star4Reply : 0 -> star4Reply : 1
-    sed -i 's/star4Reply : 0/star4Reply : 1/' configs/_main.cfg
-    
-    # Замена star5Reply : 0 -> star5Reply : 1
-    sed -i 's/star5Reply : 0/star5Reply : 1/' configs/_main.cfg
-    
-    # Замена текстов для звездных отзывов (с экранированием)
-    sed -i 's/star1ReplyText : .*/star1ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис. Заказ '\''\$order_title'\'' оценен \$date в \$time./' configs/_main.cfg
-    sed -i 's/star2ReplyText : .*/star2ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис. Заказ '\''\$order_title'\'' оценен \$date в \$time./' configs/_main.cfg
-    sed -i 's/star3ReplyText : .*/star3ReplyText : 🤖Нам очень жаль, что мы не смогли оказать нужный сервис. Заказ '\''\$order_title'\'' оценен \$date в \$time./' configs/_main.cfg
-    sed -i 's/star4ReplyText : .*/star4ReplyText : 🤖Спасибо за покупку, ждем вас снова! Заказ '\''\$order_title'\'' оценен \$date в \$time./' configs/_main.cfg
-    sed -i 's/star5ReplyText : .*/star5ReplyText : 🤖Спасибо за покупку, ждем вас снова! Заказ '\''\$order_title'\'' оценен \$date в \$time./' configs/_main.cfg
-    
+
     # watermark : 🐦 -> (пусто) в секции Other
     sed -i '/\[Other\]/,/^\[/ s/watermark : 🐦/watermark : /' configs/_main.cfg
     
@@ -510,25 +470,4 @@ if ! sudo systemctl restart "FunPayCardinal@$username.service"; then
     echo -e "sudo systemctl restart FunPayCardinal@$username.service"
 fi
 
-clear
-echo -e $logo
-echo -e '\n\n\e[1;91m * GitHub \e[1;96mgithub.com/sidor0912/FunPayCardinal\e[0m'
-echo -e '\e[1;91m * Telegram \e[1;96mt.me/funpay_cardinal\e[0m'
-
-echo -e "\n\n\e[1;92m################################################################################"
-echo -e "${RED}!СДЕЛАЙ СКРИНШОТ!${CYAN}!СДЕЛАЙ СКРИНШОТ!${RED}!СДЕЛАЙ СКРИНШОТ!${CYAN}!СДЕЛАЙ СКРИНШОТ!"
-echo -e "\nГотово!"
-echo -e "FPC запущен как фоновый процесс!"
-echo -e "Теперь напиши своему Telegram-боту."
-echo -e "${YELLOW}${BOLD}🎯 Установите плагины для FunPay Cardinal!${NC}"
-echo -e "\n\e[1;92mДля остановки FPC используй команду \e[93msudo systemctl stop FunPayCardinal@${username}\e[1;92m"
-echo -e "Для запуска FPC используй команду \e[93msudo systemctl start FunPayCardinal@${username}\e[1;92m"
-echo -e "Для перезапуска FPC используй команду \e[93msudo systemctl restart FunPayCardinal@${username}\e[1;92m"
-echo -e "Для просмотра логов используй команду \e[93msudo systemctl status FunPayCardinal@${username} -n100\e[1;92m"
-echo -e "Для добавления FPC в автозагрузку используй команду \e[93msudo systemctl enable FunPayCardinal@${username}\e[1;92m"
-echo -e "${RED}* Перед добавлением FPC в автозагрузку убедись, что твой бот работает корректно.\e[1;92m"
-echo -e "################################################################################\e[0m"
-
-echo -ne "\n\n${CYAN}Сделал скриншот? ${PURPLE_LIGHT}Тогда нажми Enter, чтобы продолжить.${RESET}"
-read
 clear
