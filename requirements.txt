@@ -6,6 +6,7 @@ aiosqlite==0.22.1
 pyrogram
 requests
 pytz
+yt-dlp[default,curl-cffi]
 
 # google
 # google-auth
